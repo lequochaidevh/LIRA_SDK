@@ -1,0 +1,764 @@
+#pragma once
+
+#include <string>
+#include <memory>
+#include <optional>
+#include <vector>
+#include <functional>
+
+#include "autobot.hpp"
+#include "compatibility_mode.hpp"
+#include "deprecated.hpp"
+#include "handle.hpp"
+#include "system.hpp"
+#include "component_type.hpp"
+#include "server_component.hpp"
+#include "connection_result.hpp"
+#include "lira_type.hpp"
+#include "lirasdk_export.h"
+
+// The LIRALink C headers are only included on request, for the deprecated APIs that use them.
+#ifdef LIRASDK_ENABLE_LIRALINK_C_API
+#include "liralink_include.hpp"
+#endif
+
+namespace lirasdk {
+
+class ServerPluginImplBase;
+
+/**
+ * @brief ForwardingOption for Connection, used to set message forwarding option.
+ */
+enum class ForwardingOption {
+    ForwardingOff = 0,
+    ForwardingOn  = 1,
+};
+
+class LirasdkImpl;
+
+/**
+ * @brief This is the main class of LIRASDK (a LIRALink API Library).
+
+ * It is used to discover vehicles and manage active connections.
+ *
+ * An instance of this class must be created and kept alive in order to use the library.
+ * The instance can be destroyed after use in order to break connections and release all resources.
+ */
+class LIRASDK_PUBLIC Lirasdk {
+ public:
+    /**
+     * @brief Returns the version of LIRASDK.
+     *
+     * Note, you're not supposed to request the version too many times.
+     *
+     * @return A string containing the version.
+     */
+    std::string version() const;
+
+    /**
+     * @brief Adds Connection via URL
+     *
+     * Supports connection: Serial, TCP or UDP.
+     * Connection URL format should be:
+     *
+     * - UDP in  (server): udpin://our_ip:port
+     * - UDP out (client): udpout://remote_ip:port
+     *
+     * - TCP in  (server):  tcpin://our_ip:port
+     * - TCP out (client): tcpout://remote_ip:port
+     *
+     * - Serial: serial://dev_node:baudrate
+     * - Serial with flow control: serial_flowcontrol://dev_node:baudrate
+     *
+     * For UDP in and TCP in (as server), our IP can be set to:
+     *   - 0.0.0.0: listen on all interfaces
+     *   - 127.0.0.1: listen on loopback (local) interface only
+     *   - Our IP: (e.g. 192.168.1.12): listen only on the network interface
+     *             with this IP.
+     *
+     * For UDP out and TCP out, the IP needs to be set to the remote IP,
+     * where the LIRALink messages are to be sent to.
+     *
+     * @param connection_url connection URL string.
+     * @param forwarding_option message forwarding option (when multiple interfaces are used).
+     * @return The result of adding the connection.
+     */
+    ConnectionResult add_any_connection(const std::string& connection_url,
+                                        ForwardingOption   forwarding_option = ForwardingOption::ForwardingOff);
+
+    /**
+     * @brief Handle type to remove a connection.
+     */
+    using ConnectionHandle = Handle<>;
+
+    /**
+     * @brief Adds Connection via URL Additionally returns a handle to remove
+     *        the connection later.
+     *
+     * Supports connection: Serial, TCP or UDP.
+     * Connection URL format should be:
+     *
+     * - UDP in  (server): udpin://our_ip:port
+     * - UDP out (client): udpout://remote_ip:port
+     *
+     * - TCP in  (server):  tcpin://our_ip:port
+     * - TCP out (client): tcpout://remote_ip:port
+     *
+     * - Serial: serial://dev_node:baudrate
+     * - Serial with flow control: serial_flowcontrol://dev_node:baudrate
+     *
+     * For UDP in and TCP in (as server), our IP can be set to:
+     *   - 0.0.0.0: listen on all interfaces
+     *   - 127.0.0.1: listen on loopback (local) interface only
+     *   - Our IP: (e.g. 192.168.1.12): listen only on the network interface
+     *             with this IP.
+     *
+     * For UDP out and TCP out, the IP needs to be set to the remote IP,
+     * where the LIRALink messages are to be sent to.
+     *
+     * @param connection_url connection URL string.
+     * @param forwarding_option message forwarding option (when multiple interfaces are used).
+     * @return A pair containing the result of adding the connection as well
+     *         as a handle to remove it later.
+     */
+    std::pair<ConnectionResult, ConnectionHandle> add_any_connection_with_handle(
+        const std::string& connection_url, ForwardingOption forwarding_option = ForwardingOption::ForwardingOff);
+
+    /**
+     * Remove connection again.
+     *
+     * @param handle Handle returned when connection was added.
+     */
+    void remove_connection(ConnectionHandle handle);
+
+    /**
+     * ConnectionError type
+     */
+    struct ConnectionError {
+        std::string      error_description;  ///< The error description
+        ConnectionHandle connection_handle;  ///< The connection handle
+    };
+
+    /**
+     * Connection Error callback type
+     */
+    using ConnectionErrorCallback = std::function<void(ConnectionError)>;
+
+    /**
+     * @brief Handle type to remove a connection error subscription.
+     */
+    using ConnectionErrorHandle = Handle<ConnectionError>;
+
+    /**
+     * Subscribe to connection errors.
+     *
+     * This will trigger when messages fail to be sent which can help
+     * diagnosing network interfaces or serial devices disappearing.
+     *
+     * Usually, an error will require to remove a connection and add it fresh.
+     *
+     * @param callback Callback to subscribe.
+     * @return Handle to unsubscribe again.
+     */
+    ConnectionErrorHandle subscribe_connection_errors(ConnectionErrorCallback callback);
+
+    /**
+     * Unsubscribe from connection errors.
+     *
+     * @param handle Handle to unsubscribe.
+     */
+    void unsubscribe_connection_errors(ConnectionErrorHandle handle);
+
+    /**
+     * @brief Get a vector of systems which have been discovered or set-up.
+     *
+     * @return The vector of systems which are available.
+     *
+     * @note The returned System must not outlive this Lirasdk instance. It holds a reference
+     *       back into it, so using a System after its Lirasdk is gone is a use-after-free,
+     *       and so is merely letting it be destroyed. The same applies to any plugin
+     *       constructed from it.
+     */
+    std::vector<std::shared_ptr<System>> systems() const;
+
+    /**
+     * @brief Get the first autobot that has been discovered.
+     *
+     * @note This requires a LIRALink component with component ID 1 sending
+     *       heartbeats.
+     *
+     * @param timeout_s A timeout in seconds.
+     *                  A timeout of 0 will not wait and return immediately.
+     *                  A negative timeout will wait forever.
+     *
+     * @return A system or nothing if nothing was discovered within the timeout.
+     *
+     * @note The returned System must not outlive this Lirasdk instance. It holds a reference
+     *       back into it, so using a System after its Lirasdk is gone is a use-after-free,
+     *       and so is merely letting it be destroyed. The same applies to any plugin
+     *       constructed from it.
+     */
+    std::optional<std::shared_ptr<System>> first_autobot(double timeout_s) const;
+
+    /**
+     * @brief Possible configurations.
+     */
+    class LIRASDK_PUBLIC Configuration {
+     public:
+        /**
+         * @brief Create new Configuration via manually configured
+         * system and component ID.
+         * @param system_id the system id to store in this configuration. The type is 32 bits wide
+         * for LIRALink's extended system ids, which are not supported yet. Applying a configuration
+         * with an id above 255 logs an error and aborts.
+         * @param component_id the component id to store in this configuration
+         * @param always_send_heartbeats send heartbeats by default even without a system connected
+         */
+        explicit Configuration(uint32_t system_id, uint8_t component_id, bool always_send_heartbeats);
+        /**
+         * @brief Create new Configuration using a component type.
+         * In this mode, the system and component ID will be automatically chosen.
+         * @param component_type the component type, used for automatically choosing ids.
+         */
+        explicit Configuration(ComponentType component_type);
+
+        Configuration()  = delete;
+        ~Configuration() = default;
+
+        /**
+         * @brief Get the system id of this configuration
+         * @return `uint32_t` the system id stored in this configuration
+         */
+        uint32_t get_system_id() const;
+
+        /**
+         * @brief Set the system id of this configuration.
+         *
+         * The type is 32 bits wide for LIRALink's extended system ids, which
+         * are not supported yet. Applying a configuration with an id above
+         * 255 logs an error and aborts.
+         */
+        void set_system_id(uint32_t system_id);
+
+        /**
+         * @brief Get the component id of this configuration
+         * @return `uint8_t` the component id stored in this configuration,from 1-255
+         */
+        uint8_t get_component_id() const;
+
+        /**
+         * @brief Set the component id of this configuration.
+         */
+        void set_component_id(uint8_t component_id);
+
+        /**
+         * @brief Get whether to send heartbeats by default.
+         * @return whether to always send heartbeats
+         */
+        bool get_always_send_heartbeats() const;
+
+        /**
+         * @brief Set whether to send heartbeats by default.
+         *
+         * Note: when a heartbeat watchdog is configured
+         * (set_heartbeat_watchdog_timeout_s()) and has expired, heartbeats
+         * stay off until Lirasdk::feed_heartbeat_watchdog() is called again,
+         * even if always_send_heartbeats is set.
+         */
+        void set_always_send_heartbeats(bool always_send_heartbeats);
+
+        /**
+         * @brief Get the heartbeat watchdog timeout.
+         * @return Timeout in seconds, 0 if the watchdog is disabled.
+         */
+        double get_heartbeat_watchdog_timeout_s() const;
+
+        /**
+         * @brief Set the heartbeat watchdog (deadman timer) timeout.
+         *
+         * When set to a value greater than 0, the periodic heartbeats sent
+         * by LIRASDK are only sent as long as Lirasdk::feed_heartbeat_watchdog()
+         * keeps being called at least once per timeout period. Heartbeats
+         * never start (and any already-running heartbeats are stopped) until
+         * the watchdog has been fed - including when the watchdog is first
+         * enabled or its timeout is changed. If the watchdog times out,
+         * heartbeats stay off until it is fed again.
+         *
+         * A successful feed remains valid until the timeout elapses, including
+         * across system disconnect/reconnect and temporary periods where the
+         * heartbeat policy does not allow sending.
+         *
+         * This is useful when LIRASDK's heartbeats should reflect the liveness
+         * of the application: if the application hangs or dies, heartbeats
+         * stop.
+         *
+         * While the watchdog is expired, heartbeats stay off until it is fed
+         * again, even if set_always_send_heartbeats() would otherwise allow
+         * them.
+         *
+         * When set to 0, the watchdog is disabled and heartbeats follow the
+         * usual policy (always_send_heartbeats or a connected system).
+         *
+         * Default: 0 (disabled)
+         *
+         * @param timeout_s Timeout in seconds: 0 (disabled) or at least 2.
+         * @return true if the value was accepted, false if it was rejected
+         *         (invalid values are ignored and the previous value kept).
+         */
+        bool set_heartbeat_watchdog_timeout_s(double timeout_s);
+
+        /** @brief Component type of this configuration, used for automatic ID set */
+        ComponentType get_component_type() const;
+
+        /**
+         * @brief Set the component type of this configuration.
+         */
+        void set_component_type(ComponentType component_type);
+
+        /**
+         * @brief Get the LIRA_TYPE (e.g. vehicle type) of this configuration
+         * @return `LiraType` the LIRA_TYPE stored in this configuration
+         */
+        LiraType get_lira_type() const;
+
+        /**
+         * @brief Set the LIRA_TYPE (e.g. vehicle type) of this configuration.
+         */
+        void set_lira_type(LiraType lira_type);
+
+        /**
+         * @brief Get the autobot type for server identification in heartbeats.
+         * @return The autobot type used in outgoing heartbeats.
+         */
+        AutoBot get_autobot() const;
+
+        /**
+         * @brief Set the autobot type for server identification.
+         *
+         * When LIRASDK acts as an autobot server, this determines
+         * the LIRA_AUTOPILOT value sent in heartbeats.
+         *
+         * Default: AutoBot::Unknown (maps to LIRA_AUTOPILOT_GENERIC)
+         */
+        void set_autobot(AutoBot autobot);
+
+        /**
+         * @brief Get the compatibility mode.
+         * @return The current compatibility mode.
+         */
+        CompatibilityMode get_compatibility_mode() const;
+
+        /**
+         * @brief Set the compatibility mode.
+         *
+         * This determines which autobot-specific quirks are used:
+         * - Auto: Use detected autobot (default, current behavior)
+         * - Pure: Pure standard LIRALink, no autobot-specific quirks
+         * - Px4: Force PX4 quirks regardless of detection
+         * - ArduPilot: Force ArduPilot quirks regardless of detection
+         *
+         * Default: CompatibilityMode::Auto
+         */
+        void set_compatibility_mode(CompatibilityMode mode);
+
+     private:
+        uint32_t          _system_id;
+        uint8_t           _component_id;
+        bool              _always_send_heartbeats;
+        double            _heartbeat_watchdog_timeout_s{0.0};
+        ComponentType     _component_type;
+        LiraType          _lira_type;
+        AutoBot           _autobot{AutoBot::Unknown};
+        CompatibilityMode _compatibility_mode{CompatibilityMode::Auto};
+
+        static ComponentType component_type_for_component_id(uint8_t component_id);
+    };
+
+    /**
+     * @brief Default constructor without configuration, no longer recommended.
+     *
+     * @note This has been removed because LIRASDK used to identify itself as a
+     *       ground station by default which isn't always the safest choice.
+     *       For instance, when LIRASDK is used on a companion computer (set as
+     *       a ground station) it means that the appropriate failsafe doesn't
+     *       trigger.
+     */
+    Lirasdk() = delete;
+
+    /**
+     * @brief Constructor with configuration.
+     *
+     * @param configuration Configuration to use in LIRASDK instance.
+     */
+    Lirasdk(Configuration configuration);
+
+    /**
+     * @brief Destructor.
+     *
+     * Disconnects all connected vehicles and releases all resources.
+     * Any active .tlog recording is automatically stopped and flushed.
+     */
+    ~Lirasdk();
+
+    /**
+     * @brief Set `Configuration` of SDK.
+     *
+     * The default configuration is `Configuration::GroundStation`
+     * The configuration is used in order to set the LIRALink system ID, the
+     * component ID, as well as the LIRA_TYPE accordingly.
+     *
+     * @param configuration Configuration chosen.
+     */
+    void set_configuration(Configuration configuration);
+
+    /**
+     * @brief Set the heartbeat watchdog timeout at runtime.
+     *
+     * When set to a value greater than 0, the periodic heartbeats sent by
+     * LIRASDK are only sent as long as feed_heartbeat_watchdog() keeps being
+     * called at least once per timeout period. Enabling or changing the
+     * timeout stops any running heartbeats until the watchdog is fed.
+     *
+     * When set to 0, the watchdog is disabled and heartbeats follow the
+     * usual policy (always_send_heartbeats or a connected system).
+     *
+     * This is an alternative to configuring the watchdog via
+     * Configuration::set_heartbeat_watchdog_timeout_s() at startup.
+     *
+     * @param timeout_s Timeout in seconds: 0 (disabled) or at least 2.
+     * @return true if the value was accepted, false if it was rejected
+     *         (invalid values are ignored and the previous value kept).
+     */
+    bool set_heartbeat_watchdog_timeout_s(double timeout_s);
+
+    /**
+     * @brief Set timeout of LIRALink transfers.
+     *
+     * The default timeout used is generally DEFAULT_SERIAL_BAUDRATE (0.5 seconds) seconds.
+     * If LIRASDK is used on the same host this timeout can be reduced, while
+     * if LIRASDK has to communicate over links with high latency it might
+     * need to be increased to prevent timeouts.
+     */
+    void set_timeout_s(double timeout_s);
+
+    /**
+     * @brief Set heartbeat timeout.
+     *
+     * The default heartbeat timeout is 3 seconds. If no heartbeat is received
+     * within this time, the system is considered disconnected.
+     *
+     * @param timeout_s Timeout in seconds.
+     */
+    void set_heartbeat_timeout_s(double timeout_s);
+
+    /**
+     * @brief Get heartbeat timeout.
+     *
+     * @return Timeout in seconds.
+     */
+    double get_heartbeat_timeout_s() const;
+
+    /**
+     * @brief Feed the heartbeat watchdog.
+     *
+     * Resets the watchdog timer configured with
+     * Configuration::set_heartbeat_watchdog_timeout_s(), keeping the periodic
+     * heartbeats alive for another timeout period. If the watchdog had
+     * already expired, this allows heartbeats to resume when the usual
+     * heartbeat policy allows them.
+     *
+     * Has no effect if no watchdog is configured. A feed remains valid until
+     * the timeout elapses; it does not start heartbeats that are off because
+     * always_send_heartbeats is unset and no system is connected.
+     */
+    void feed_heartbeat_watchdog();
+
+    /**
+     * @brief Set a custom callback executor.
+     *
+     * By default, LIRASDK runs all user callbacks on an internal thread.
+     * Setting a custom executor replaces this: the executor function is called
+     * for each pending callback, and the internal callback thread is stopped.
+     *
+     * The executor is called from LIRASDK's internal work thread, so it must
+     * be fast (e.g., just post/queue the callback for later execution).
+     *
+     * This is useful for integrating with an existing event loop or ensuring
+     * callbacks run on a specific thread.
+     *
+     * @note When a custom executor is set, blocking/synchronous APIs (e.g.,
+     *       first_autobot(), or any sync plugin method) must not be called
+     *       from the thread that drains the executor queue, as they internally
+     *       wait for a callback that the blocked thread would need to process.
+     *       Use async APIs and drain callbacks in your event loop instead,
+     *       or call sync APIs from a separate thread.
+     *
+     * @param executor Function that will be called with each callback to execute.
+     *                 Pass nullptr/empty to revert to the default internal thread.
+     */
+    void set_callback_executor(std::function<void(std::function<void()>)> executor);
+
+    /**
+     * @brief Callback type discover and timeout notifications.
+     */
+    using NewSystemCallback = std::function<void()>;
+
+    /**
+     * @brief Handle type to unsubscribe from subscribe_on_new_system.
+     */
+    using NewSystemHandle = Handle<>;
+
+    /**
+     * @brief Get notification about a change in systems.
+     *
+     * This gets called whenever a system is added.
+     *
+     * @param callback Callback to subscribe.
+     *
+     * @return A handle to unsubscribe again.
+     */
+    NewSystemHandle subscribe_on_new_system(const NewSystemCallback& callback);
+
+    /**
+     * @brief unsubscribe from subscribe_on_new_system.
+     *
+     * @param handle Handle received on subscription.
+     */
+    void unsubscribe_on_new_system(NewSystemHandle handle);
+
+    /**
+     * @brief Get server component with default type of Lirasdk instance.
+     *
+     * @return A valid shared pointer to a server component if it was successful, an empty pointer
+     * otherwise.
+     *
+     * @note The returned ServerComponent must not outlive this Lirasdk instance. It holds a
+     *       reference back into it, so using one after its Lirasdk is gone is a
+     *       use-after-free, and so is merely letting it be destroyed.
+     */
+    std::shared_ptr<ServerComponent> server_component(unsigned instance = 0);
+
+    /**
+     * @brief Get server component by a high level type.
+     *
+     * This represents a server component of the LIRASDK instance.
+     *
+     * @param component_type The high level type of the component.
+     * @param instance The instance of the component if there are multiple, starting at 0.
+     *
+     * @return A valid shared pointer to a server component if it was successful, an empty pointer
+     * otherwise.
+     */
+    std::shared_ptr<ServerComponent> server_component_by_type(ComponentType component_type, unsigned instance = 0);
+
+    /**
+     * @brief Get server component by the low LIRALink component ID.
+     *
+     * This represents a server component of the LIRASDK instance.
+     *
+     * @param component_id LIRALink component ID to use
+     *
+     * @return A valid shared pointer to a server component if it was successful, an empty pointer
+     * otherwise.
+     */
+    std::shared_ptr<ServerComponent> server_component_by_id(uint8_t component_id);
+
+    /**
+     * @brief A complete LIRALink message with all header information and fields
+     */
+    struct LiralinkMessage {
+        std::string message_name{};                 /**< @brief LIRALink message name (e.g., "HEARTBEAT",
+                                                       "GLOBAL_POSITION_INT") */
+        uint32_t             system_id{};           /**< @brief System ID of the sender (for received messages) */
+        uint32_t             component_id{};        /**< @brief Component ID of the sender (for received messages) */
+        uint32_t             target_system_id{};    /**< @brief Target system ID (for sending, 0 for broadcast) */
+        uint32_t             target_component_id{}; /**< @brief Target component ID (for sending, 0 for broadcast) */
+        std::string          fields_json{};         /**< @brief All message fields as single JSON object */
+        std::vector<uint8_t> raw_bytes{};           /**< @brief Raw LIRALink wire bytes (populated for
+                                                       incoming messages; empty when sending) */
+    };
+
+    /**
+     * @brief Handle for intercepting messages.
+     */
+    using InterceptJsonHandle = Handle<bool(LiralinkMessage)>;
+
+    /**
+     * @brief Callback type for intercepting messages.
+     */
+    using InterceptJsonCallback = std::function<bool(LiralinkMessage)>;
+
+    /**
+     * @brief Intercept incoming messages as JSON.
+     *
+     * This is a hook that allows to read any messages arriving via the
+     * in JSON format.
+     *
+     * @param callback Callback to be called for each incoming message.
+     *        To drop a message, return 'false' from the callback.
+     */
+    InterceptJsonHandle subscribe_incoming_messages_json(const InterceptJsonCallback& callback);
+
+    /**
+     * @brief Unsubscribe from incoming messages as JSON
+     */
+    void unsubscribe_incoming_messages_json(InterceptJsonHandle handle);
+
+    /**3
+     * @brief Intercept outgoing messages as JSON.
+     *
+     * This is a hook that allows to read any messages arriving via the
+     * in JSON format.
+     *
+     * @param callback Callback to be called for each outgoing message.
+     *        To drop a message, return 'false' from the callback.
+     */
+    InterceptJsonHandle subscribe_outgoing_messages_json(const InterceptJsonCallback& callback);
+
+    /**
+     * @brief Unsubscribe from outgoing messages as JSON
+     */
+    void unsubscribe_outgoing_messages_json(InterceptJsonHandle handle);
+
+    /**
+     * @brief Intercept incoming messages.
+     *
+     * This is a hook which allows to change or drop LIRALink messages as they
+     * are received before they get forwarded any subscribers.
+     *
+     * @note This functionality is provided primarily for testing in order to
+     * simulate packet drops or actors not adhering to the LIRALink protocols.
+     *
+     * @note Only available if `LIRASDK_ENABLE_LIRALINK_C_API` is defined before
+     * including LIRASDK, because it exposes the LIRALink C types. Use
+     * `subscribe_incoming_messages_json` instead.
+     *
+     * @param callback Callback to be called for each incoming message.
+     *        To drop a message, return 'false' from the callback.
+     */
+#ifdef LIRASDK_ENABLE_LIRALINK_C_API
+    DEPRECATED void intercept_incoming_messages_async(std::function<bool(liralink_message_t&)> callback);
+#endif
+
+    /**
+     * @brief Start recording all incoming LIRALink traffic to a .tlog file.
+     *
+     * A .tlog (telemetry log) is a binary file where each record consists of
+     * an 8-byte big-endian microsecond Unix timestamp followed by the raw
+     * LIRALink wire packet. The format is compatible with
+     * Mission Planner, LIRAProxy, and pyliralink.
+     *
+     * Recording captures traffic across the entire Lirasdk instance (all
+     * connected systems and connections), not per-system. If recording is
+     * already active it is stopped and restarted with the new file.
+     *
+     * The recording is automatically stopped and flushed when the Lirasdk
+     * instance is destroyed, so explicit stop_tlog_recording() is optional.
+     *
+     * @param path Output file path (e.g. "flight.tlog").
+     * @return true if the file was opened successfully, false otherwise.
+     */
+    [[nodiscard]] bool start_tlog_recording(const std::string& path);
+
+    /**
+     * @brief Stop recording and close the .tlog file.
+     *
+     * Does nothing if recording is not active. Automatically called on
+     * Lirasdk destruction.
+     */
+    void stop_tlog_recording();
+
+    /**
+     * @brief Intercept outgoing messages.
+     *
+     * This is a hook which allows to change or drop LIRALink messages before
+     * they are sent.
+     *
+     * @note This functionality is provided primarily for testing in order to
+     * simulate packet drops or actors not adhering to the LIRALink protocols.
+     *
+     * @note Only available if `LIRASDK_ENABLE_LIRALINK_C_API` is defined before
+     * including LIRASDK, because it exposes the LIRALink C types. Use
+     * `subscribe_outgoing_messages_json` instead.
+     *
+     * @param callback Callback to be called for each outgoing message.
+     *        To drop a message, return 'false' from the callback.
+     */
+#ifdef LIRASDK_ENABLE_LIRALINK_C_API
+    DEPRECATED void intercept_outgoing_messages_async(std::function<bool(liralink_message_t&)> callback);
+#endif
+
+    /**
+     * @brief Callback type for raw bytes subscriptions.
+     */
+    using RawBytesCallback = std::function<void(const char* bytes, size_t length)>;
+
+    /**
+     * @brief Handle type for raw bytes subscriptions.
+     */
+    using RawBytesHandle = Handle<const char*, size_t>;
+
+    /**
+     * @brief Pass received raw LIRALink bytes.
+     *
+     * This allows passing raw LIRALink message bytes into LIRASDK to be processed.
+     * The bytes can contain one or more LIRALink messages.
+     *
+     * @note Before using this, run add_any_connection("raw://")
+     *
+     * This goes together with subscribe_raw_bytes_to_be_sent.
+     *
+     * @param bytes Pointer to raw LIRALink message bytes.
+     * @param length Number of bytes to send.
+     */
+    void pass_received_raw_bytes(const char* bytes, size_t length);
+
+    /**
+     * @brief Subscribe to raw bytes to be sent.
+     *
+     * This allows getting LIRALink bytes that need to be sent out.
+     *
+     * @note Before using this, run add_any_connection("raw://")
+     *
+     * This goes together with pass_received_raw_bytes.
+     * The bytes contain one liralink message at a time.
+     *
+     * @param callback Callback to be called with outgoing raw bytes.
+     * @return Handle to unsubscribe again.
+     */
+    RawBytesHandle subscribe_raw_bytes_to_be_sent(RawBytesCallback callback);
+
+    /**
+     * @brief Unsubscribe from raw bytes to be sent.
+     *
+     * @param handle Handle from subscribe_raw_bytes_to_be_sent.
+     */
+    void unsubscribe_raw_bytes_to_be_sent(RawBytesHandle handle);
+
+ private:
+    static constexpr int DEFAULT_SYSTEM_ID_AUTOPILOT = 1;
+    // The component IDs are LIRA_COMPONENT values, spelled out to keep the LIRALink C headers
+    // out of this header.
+    static constexpr int DEFAULT_COMPONENT_ID_AUTOPILOT = 1;  // LIRA_COMP_ID_AUTOPILOT1
+    static constexpr int DEFAULT_SYSTEM_ID_GCS          = 245;
+    static constexpr int DEFAULT_COMPONENT_ID_GCS       = 190;  // LIRA_COMP_ID_MISSIONPLANNER
+    static constexpr int DEFAULT_SYSTEM_ID_CC           = 1;
+    static constexpr int DEFAULT_COMPONENT_ID_CC        = 195;  // LIRA_COMP_ID_PATHPLANNER
+    static constexpr int DEFAULT_SYSTEM_ID_CAMERA       = 1;
+    static constexpr int DEFAULT_COMPONENT_ID_CAMERA    = 100;  // LIRA_COMP_ID_CAMERA
+    static constexpr int DEFAULT_SYSTEM_ID_GIMBAL       = 1;
+    static constexpr int DEFAULT_COMPONENT_ID_GIMBAL    = 154;  // LIRA_COMP_ID_GIMBAL
+    static constexpr int DEFAULT_SYSTEM_ID_REMOTEID     = 1;
+    static constexpr int DEFAULT_COMPONENT_ID_REMOTEID  = 236;  // LIRA_COMP_ID_ODID_TXRX_1
+
+    /* @private. */
+    std::shared_ptr<LirasdkImpl> _impl{};
+
+    friend ServerPluginImplBase;
+
+    // Non-copyable
+    Lirasdk(const Lirasdk&) = delete;
+    const Lirasdk& operator=(const Lirasdk&) = delete;
+};
+
+}  // namespace lirasdk
