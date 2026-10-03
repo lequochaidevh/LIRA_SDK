@@ -9,9 +9,9 @@ namespace lirasdk {
  * @brief AutoBot type
  */
 enum class AutoBot {
-    Unknown,  // AutoBot unknown
-    Base,     // Base
-    Simu,     // Simu
+    Unknown,     // AutoBot unknown
+    Base,        // Base
+    Simulation,  // Simulation
 };
 
 /**
