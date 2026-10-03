@@ -19,7 +19,7 @@ TEST(CallEveryHandler, Single) {
 
     int num_called = 0;
 
-    auto cookie = ceh.add([&num_called]() { ++num_called; }, 0.1);
+    auto cookie = ceh.add([&num_called]() { ++num_called; }, 0.1);  // 100ms
 
     for (int i = 0; i < 11; ++i) {
         time.sleep_for(std::chrono::milliseconds(10));
@@ -132,9 +132,9 @@ TEST(CallEveryHandler, CallImmediately) {
     auto cookie = ceh.add([&num_called]() { ++num_called; }, 0.1);
     UNUSED(cookie);
 
-    for (int i = 0; i < 1; ++i) {
-        ceh.run_once();
-    }
+    // offset last time by interval_s in add() function
+    ceh.run_once();
+
     EXPECT_EQ(num_called, 1);
 }
 
@@ -143,6 +143,7 @@ TEST(CallEveryHandler, NextHandlerRemovedDuringCallback) {
     CallEveryHandler ceh(time);
 
     CallEveryHandler::Cookie cookie2{};
+    bool                     cookie2_called = false;
 
     CallEveryHandler::Cookie cookie1 = ceh.add(
         [&ceh, &cookie2]() {
@@ -153,10 +154,11 @@ TEST(CallEveryHandler, NextHandlerRemovedDuringCallback) {
         },
         0.1);
 
-    cookie2 = ceh.add([]() {}, 0.1);
+    cookie2 = ceh.add([&cookie2_called]() { cookie2_called = true; }, 0.1);
 
-    time.sleep_for(std::chrono::milliseconds(200));
     ceh.run_once();
+
+    EXPECT_FALSE(cookie2_called);
 
     UNUSED(cookie1);
 }
@@ -169,6 +171,9 @@ TEST(CallEveryHandler, AllHandlersRemovedDuringCallback) {
     CallEveryHandler::Cookie cookie2{};
     CallEveryHandler::Cookie cookie3{};
 
+    bool cookie2_called = false;
+    bool cookie3_called = false;
+
     cookie1 = ceh.add(
         [&ceh, &cookie1, &cookie2, &cookie3]() {
             // This is even more evil. We remove all handlers, including ourselves,
@@ -179,11 +184,15 @@ TEST(CallEveryHandler, AllHandlersRemovedDuringCallback) {
         },
         0.1);
 
-    cookie2 = ceh.add([]() {}, 0.1);
-    cookie3 = ceh.add([]() {}, 0.1);
+    cookie2 = ceh.add([&cookie2_called]() { cookie2_called = true; }, 0.1);
+    cookie3 = ceh.add([&cookie3_called]() { cookie3_called = true; }, 0.1);
 
     time.sleep_for(std::chrono::milliseconds(200));
     ceh.run_once();
+
+    EXPECT_FALSE(cookie2_called);
+    EXPECT_FALSE(cookie3_called);
+    EXPECT_FALSE(ceh.next_deadline().has_value());
 }
 
 TEST(CallEveryHandler, RemovingDueHandlerDuringCallbackPreventsIt) {
@@ -198,7 +207,6 @@ TEST(CallEveryHandler, RemovingDueHandlerDuringCallbackPreventsIt) {
     CallEveryHandler::Cookie cookie1 = ceh.add([&ceh, &cookie2]() { ceh.remove(cookie2); }, 0.1);
     cookie2                          = ceh.add([&second_called]() { second_called = true; }, 0.1);
 
-    time.sleep_for(std::chrono::milliseconds(200));
     ceh.run_once();
 
     EXPECT_FALSE(second_called);
@@ -262,8 +270,9 @@ TEST(CallEveryHandler, RemoveBlockingFromOwnCallbackDoesNotDeadlock) {
 
     time.sleep_for(std::chrono::milliseconds(200));
     ceh.run_once();
+    EXPECT_FALSE(ceh.next_deadline().has_value());
     time.sleep_for(std::chrono::milliseconds(200));
-    ceh.run_once();
+    ceh.run_once();  // not implement anything
 
     EXPECT_EQ(num_called, 1);
 }
@@ -283,16 +292,19 @@ TEST(CallEveryHandler, WakeupOnlyWhenDeadlineMovesEarlier) {
     Time             time{};
     CallEveryHandler ceh(time);
 
-    int wakeups = 0;
+    int wakeups       = 0;
+    int cookie_called = 0;
     ceh.set_wakeup_callback([&wakeups]() { ++wakeups; });
 
     // A new entry is due straight away, so the owner's timer has to be re-armed.
-    auto cookie = ceh.add([]() {}, 1.0);
+    auto cookie = ceh.add([&cookie_called]() { cookie_called++; }, 1.0);
     EXPECT_EQ(wakeups, 1);
 
     // Consume that first due, leaving the entry due one interval from now.
     ceh.run_once();
-
+    EXPECT_EQ(cookie_called, 1);
+    ceh.run_once();
+    EXPECT_NE(cookie_called, 2);
     // Shortening the interval brings the deadline forward: without a wakeup the owner's
     // timer stays parked on the old one and only catches up at its safety cap.
     wakeups = 0;
@@ -311,7 +323,9 @@ TEST(CallEveryHandler, WakeupOnlyWhenDeadlineMovesEarlier) {
 
     // call_soon() makes it due now, so it always re-arms.
     wakeups = 0;
-    ceh.call_soon(cookie);
+    ceh.call_soon(cookie);  // wakup_cb and reset time
+    ceh.run_once();
+    EXPECT_EQ(cookie_called, 2);
     EXPECT_EQ(wakeups, 1);
 
     // Removing an entry can only push the earliest deadline out, never pull it in.
