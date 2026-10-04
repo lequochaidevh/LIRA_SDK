@@ -355,7 +355,7 @@ class LIRASDK_PUBLIC Lirasdk {
          * - Auto: Use detected autobot (default, current behavior)
          * - Pure: Pure standard LIRALink, no autobot-specific quirks
          * - Px4: Force PX4 quirks regardless of detection
-         * - ArduPilot: Force ArduPilot quirks regardless of detection
+         * - ArduBot: Force ArduBot quirks regardless of detection
          *
          * Default: CompatibilityMode::Auto
          */

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<liradef>
+    <!-- Heartbeat Message Definition -->
+    <message id="1" name="HEARTBEAT">
+        <field type="uint8_t" name="type">Type of the system (Drone, GCS, etc.)</field>
+        <field type="uint8_t" name="autobot">Autopilot type (PX4, ArduPilot, etc.)</field>
+        <field type="uint8_t" name="base_mode">System mode bitfield</field>
+        <field type="uint32_t" name="custom_mode">Navigation mode index</field>
+        <field type="uint8_t" name="system_status">System status identifier</field>
+    </message>
+
+    <!-- Raw GPS Message Definition -->
+    <message id="33" name="GPS_RAW_INT">
+        <field type="uint64_t" name="time_usec">Timestamp in microseconds</field>
+        <field type="int32_t" name="lat">Latitude (WGS84), multiplied by 1e7</field>
+        <field type="int32_t" name="lon">Longitude (WGS84), multiplied by 1e7</field>
+        <field type="int32_t" name="alt">Altitude (MSL) in millimeters</field>
+        <field type="uint16_t" name="eph">GPS HDOP horizontal dilution of precision</field>
+        <field type="uint16_t" name="epv">GPS VDOP vertical dilution of precision</field>
+        <field type="uint16_t" name="vel">GPS ground speed in cm/s</field>
+        <field type="uint8_t" name="satellites_visible">Number of satellites visible</field>
+    </message>
+</liradef>

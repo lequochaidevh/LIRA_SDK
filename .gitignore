@@ -1,3 +1,5 @@
 __internal*/
 build/
+msg_def/
+liramsg/
 .vscode
