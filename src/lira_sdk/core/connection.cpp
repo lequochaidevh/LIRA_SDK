@@ -33,13 +33,14 @@ void Connection::drain_io_context() {
     fence.get_future().wait();
 }
 
-Connection::Connection(ReceiverCallback receiver_callback, LibliraReceiverCallback liblira_receiver_callback,
-                       LirasdkImpl& lirasdk_impl, ForwardingOption forwarding_option)
+Connection::Connection(ReceiverCallback                 receiver_callback,
+                       LiraDistributingReceiverCallback lira_distributing_receiver_callback, LirasdkImpl& lirasdk_impl,
+                       ForwardingOption forwarding_option)
     : _receiver_callback(std::move(receiver_callback)),
-      _liblira_receiver_callback(std::move(liblira_receiver_callback)),
+      _lira_distributing_receiver_callback(std::move(lira_distributing_receiver_callback)),
       _lirasdk_impl(lirasdk_impl),
-      _liralink_receiver(),
-      _liblira_receiver(),
+      _lira_protocol_receiver(),
+      _lira_distributing_receiver(),
       _forwarding_option(forwarding_option) {
     // Insert system ID 0 in all connections for broadcast.
     _system_ids.insert(0);
@@ -48,7 +49,7 @@ Connection::Connection(ReceiverCallback receiver_callback, LibliraReceiverCallba
         _forwarding_connections_count++;
     }
 
-    if (const char* env_p = std::getenv("LIRASDK_LIRALINK_DIRECT_DEBUGGING")) {
+    if (const char* env_p = std::getenv("LIRASDK_LIRA_PROTOCOL_DIRECT_DEBUGGING")) {
         if (std::string(env_p) == "1") {
             _debugging = true;
         }
@@ -57,39 +58,40 @@ Connection::Connection(ReceiverCallback receiver_callback, LibliraReceiverCallba
 
 Connection::~Connection() {
     // Just in case a specific connection didn't call it already.
-    stop_liralink_receiver();
-    stop_liblira_receiver();
-    _receiver_callback         = {};
-    _liblira_receiver_callback = {};
+    stop_lira_protocol_receiver();
+    stop_lira_distributing_receiver();
+    _receiver_callback                   = {};
+    _lira_distributing_receiver_callback = {};
 }
 
-bool Connection::start_liralink_receiver() {
-    if (!_liralink_receiver) {
-        _liralink_receiver = std::make_unique<LiralinkReceiver>();
+bool Connection::start_lira_protocol_receiver() {
+    if (!_lira_protocol_receiver) {
+        _lira_protocol_receiver = std::make_unique<LiraProtocolReceiver>();
     }
     return true;
 }
 
-void Connection::stop_liralink_receiver() {
-    if (_liralink_receiver) {
-        _liralink_receiver.reset();
+void Connection::stop_lira_protocol_receiver() {
+    if (_lira_protocol_receiver) {
+        _lira_protocol_receiver.reset();
     }
 }
 
-bool Connection::start_liblira_receiver() {
-    std::lock_guard<std::mutex> lock(_liblira_receiver_mutex);
-    _liblira_receiver = std::make_shared<LibliraReceiver>(_lirasdk_impl);
+bool Connection::start_lira_distributing_receiver() {
+    std::lock_guard<std::mutex> lock(_lira_distributing_receiver_mutex);
+    _lira_distributing_receiver = std::make_shared<LiraDistributingReceiver>(_lirasdk_impl);
     return true;
 }
 
-void Connection::stop_liblira_receiver() {
-    std::lock_guard<std::mutex> lock(_liblira_receiver_mutex);
-    // Reset under the mutex so that concurrent get_liblira_receiver() calls
+void Connection::stop_lira_distributing_receiver() {
+    std::lock_guard<std::mutex> lock(_lira_distributing_receiver_mutex);
+    // Reset under the mutex so that concurrent get_lira_distributing_receiver() calls
     // either see a valid shared_ptr before the reset or nullptr after.
-    _liblira_receiver.reset();
+    _lira_distributing_receiver.reset();
 }
 
-void Connection::receive_liblira_message(const Lirasdk::LiralinkMessage& message, Connection* connection) {
+void Connection::receive_lira_distributing_message(const Lirasdk::LiraProtocolMessage& message,
+                                                   Connection*                         connection) {
     // Register system ID when receiving a message from a new system.
     {
         std::lock_guard<std::mutex> lock(_system_ids_mutex);
@@ -97,23 +99,24 @@ void Connection::receive_liblira_message(const Lirasdk::LiralinkMessage& message
     }
 
     if (_debugging) {
-        LogDebug("Connection::receive_liblira_message: {} from system {}", message.message_name, message.system_id);
+        LogDebug("Connection::receive_lira_distributing_message: {} from system {}", message.message_name,
+                 message.system_id);
     }
 
-    if (_liblira_receiver_callback) {
+    if (_lira_distributing_receiver_callback) {
         if (_debugging) {
-            LogDebug("Calling liblira receiver callback for: {}", message.message_name);
+            LogDebug("Calling lira_distributing receiver callback for: {}", message.message_name);
         }
-        _liblira_receiver_callback(message, connection);
+        _lira_distributing_receiver_callback(message, connection);
     } else {
-        LogWarn("No liblira receiver callback set!");
+        LogWarn("No lira_distributing receiver callback set!");
     }
 }
 
-void Connection::receive_message(LiralinkReceiver::ParseResult result, liralink_message_t& message,
+void Connection::receive_message(LiraProtocolReceiver::ParseResult result, lira_protocol_message_t& message,
                                  Connection* connection) {
     // Register system ID for valid messages
-    if (result == LiralinkReceiver::ParseResult::MessageParsed) {
+    if (result == LiraProtocolReceiver::ParseResult::MessageParsed) {
         std::lock_guard<std::mutex> lock(_system_ids_mutex);
         _system_ids.insert(message.sysid);
     }

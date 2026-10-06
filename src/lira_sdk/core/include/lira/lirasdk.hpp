@@ -18,8 +18,8 @@
 #include "lirasdk_export.h"
 
 // The LIRALink C headers are only included on request, for the deprecated APIs that use them.
-#ifdef LIRASDK_ENABLE_LIRALINK_C_API
-#include "liralink_include.hpp"
+#ifdef LIRASDK_ENABLE_LIRA_PROTOCOL_C_API
+#include "lira_protocol_include.hpp"
 #endif
 
 namespace lirasdk {
@@ -566,7 +566,7 @@ class LIRASDK_PUBLIC Lirasdk {
     /**
      * @brief A complete LIRALink message with all header information and fields
      */
-    struct LiralinkMessage {
+    struct LiraProtocolMessage {
         std::string message_name{};                 /**< @brief LIRALink message name (e.g., "HEARTBEAT",
                                                        "GLOBAL_POSITION_INT") */
         uint32_t             system_id{};           /**< @brief System ID of the sender (for received messages) */
@@ -581,12 +581,12 @@ class LIRASDK_PUBLIC Lirasdk {
     /**
      * @brief Handle for intercepting messages.
      */
-    using InterceptJsonHandle = Handle<bool(LiralinkMessage)>;
+    using InterceptJsonHandle = Handle<bool(LiraProtocolMessage)>;
 
     /**
      * @brief Callback type for intercepting messages.
      */
-    using InterceptJsonCallback = std::function<bool(LiralinkMessage)>;
+    using InterceptJsonCallback = std::function<bool(LiraProtocolMessage)>;
 
     /**
      * @brief Intercept incoming messages as JSON.
@@ -629,15 +629,15 @@ class LIRASDK_PUBLIC Lirasdk {
      * @note This functionality is provided primarily for testing in order to
      * simulate packet drops or actors not adhering to the LIRALink protocols.
      *
-     * @note Only available if `LIRASDK_ENABLE_LIRALINK_C_API` is defined before
+     * @note Only available if `LIRASDK_ENABLE_LIRA_PROTOCOL_C_API` is defined before
      * including LIRASDK, because it exposes the LIRALink C types. Use
      * `subscribe_incoming_messages_json` instead.
      *
      * @param callback Callback to be called for each incoming message.
      *        To drop a message, return 'false' from the callback.
      */
-#ifdef LIRASDK_ENABLE_LIRALINK_C_API
-    DEPRECATED void intercept_incoming_messages_async(std::function<bool(liralink_message_t&)> callback);
+#ifdef LIRASDK_ENABLE_LIRA_PROTOCOL_C_API
+    DEPRECATED void intercept_incoming_messages_async(std::function<bool(lira_protocol_message_t&)> callback);
 #endif
 
     /**
@@ -646,7 +646,7 @@ class LIRASDK_PUBLIC Lirasdk {
      * A .tlog (telemetry log) is a binary file where each record consists of
      * an 8-byte big-endian microsecond Unix timestamp followed by the raw
      * LIRALink wire packet. The format is compatible with
-     * Mission Planner, LIRAProxy, and pyliralink.
+     * Mission Planner, LIRAProxy, and pylira_protocol.
      *
      * Recording captures traffic across the entire Lirasdk instance (all
      * connected systems and connections), not per-system. If recording is
@@ -677,15 +677,15 @@ class LIRASDK_PUBLIC Lirasdk {
      * @note This functionality is provided primarily for testing in order to
      * simulate packet drops or actors not adhering to the LIRALink protocols.
      *
-     * @note Only available if `LIRASDK_ENABLE_LIRALINK_C_API` is defined before
+     * @note Only available if `LIRASDK_ENABLE_LIRA_PROTOCOL_C_API` is defined before
      * including LIRASDK, because it exposes the LIRALink C types. Use
      * `subscribe_outgoing_messages_json` instead.
      *
      * @param callback Callback to be called for each outgoing message.
      *        To drop a message, return 'false' from the callback.
      */
-#ifdef LIRASDK_ENABLE_LIRALINK_C_API
-    DEPRECATED void intercept_outgoing_messages_async(std::function<bool(liralink_message_t&)> callback);
+#ifdef LIRASDK_ENABLE_LIRA_PROTOCOL_C_API
+    DEPRECATED void intercept_outgoing_messages_async(std::function<bool(lira_protocol_message_t&)> callback);
 #endif
 
     /**
@@ -721,7 +721,7 @@ class LIRASDK_PUBLIC Lirasdk {
      * @note Before using this, run add_any_connection("raw://")
      *
      * This goes together with pass_received_raw_bytes.
-     * The bytes contain one liralink message at a time.
+     * The bytes contain one lira_protocol message at a time.
      *
      * @param callback Callback to be called with outgoing raw bytes.
      * @return Handle to unsubscribe again.

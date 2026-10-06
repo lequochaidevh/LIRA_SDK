@@ -5,7 +5,7 @@
 /**
  * @brief Struct to represent a LIRALink address.
  */
-struct LiralinkAddress {
+struct LiraProtocolAddress {
     /**
      * @brief System ID, also called sysid.
      *

@@ -3,16 +3,17 @@
 
 namespace lirasdk {
 
-UdpConnection::UdpConnection(ReceiverCallback receiver_callback, LibliraReceiverCallback liblira_receiver_callback,
+UdpConnection::UdpConnection(ReceiverCallback                 receiver_callback,
+                             LiraDistributingReceiverCallback lira_distributing_receiver_callback,
                              LirasdkImpl& lirasdk_impl, const std::string& local_ip, int local_port,
                              ForwardingOption forwarding_option)
-    : Connection(receiver_callback, liblira_receiver_callback, lirasdk_impl, forwarding_option),
+    : Connection(receiver_callback, lira_distributing_receiver_callback, lirasdk_impl, forwarding_option),
       _local_ip(local_ip),
       _local_port(local_port),
       _socket(io_context()),  // Inherits matching central thread contexts smoothly
       _recv_buffer(BUFFER_SIZE) {
     // Allocate the unique pointer wrapper object inherited from base class
-    _liralink_receiver = std::make_unique<LiralinkReceiver>();
+    _lira_protocol_receiver = std::make_unique<LiraProtocolReceiver>();
 }
 
 UdpConnection::~UdpConnection() { stop(); }
@@ -55,14 +56,14 @@ void UdpConnection::start_receive() {
     _socket.async_receive_from(asio::buffer(_recv_buffer.data(), _recv_buffer.size()), _remote_endpoint,
                                [this](std::error_code ec, std::size_t bytes_transferred) {
                                    if (!ec && bytes_transferred > 0 && _is_running) {
-                                       liralink_message_t parsed_msg{};
+                                       lira_protocol_message_t parsed_msg{};
 
                                        // Parse byte stream through our own unique local parser state machine instance
                                        for (size_t i = 0; i < bytes_transferred; ++i) {
-                                           LiralinkReceiver::ParseResult result =
-                                               _liralink_receiver->parse_bytes(_recv_buffer[i], parsed_msg);
+                                           LiraProtocolReceiver::ParseResult result =
+                                               _lira_protocol_receiver->parse_bytes(_recv_buffer[i], parsed_msg);
 
-                                           if (result != LiralinkReceiver::ParseResult::Incomplete) {
+                                           if (result != LiraProtocolReceiver::ParseResult::Incomplete) {
                                                // Pass up into base tracking pipelines
                                                this->receive_message(result, parsed_msg, this);
                                            }
@@ -75,10 +76,10 @@ void UdpConnection::start_receive() {
                                });
 }
 
-std::pair<bool, std::string> UdpConnection::send_message(const liralink_message_t& message) {
+std::pair<bool, std::string> UdpConnection::send_message(const lira_protocol_message_t& message) {
     // Pack the message structure directly over to raw bytes
     // Since we forced 1-byte alignment layouts via #pragma pack, we can directly map raw memory
-    return send_raw_bytes(reinterpret_cast<const char*>(&message), sizeof(liralink_message_t));
+    return send_raw_bytes(reinterpret_cast<const char*>(&message), sizeof(lira_protocol_message_t));
 }
 
 std::pair<bool, std::string> UdpConnection::send_raw_bytes(const char* bytes, size_t length) {
