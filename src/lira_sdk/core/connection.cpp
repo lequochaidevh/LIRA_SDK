@@ -1,0 +1,168 @@
+#include "connection.hpp"
+
+#include <asio/post.hpp>
+#include <cassert>
+#include <future>
+#include <memory>
+#include <utility>
+#include "lirasdk_impl.hpp"
+#include "log.hpp"
+
+#ifdef WINDOWS
+#include <winsock2.h>
+#endif
+
+namespace lirasdk {
+
+std::atomic<unsigned> Connection::_forwarding_connections_count = 0;
+
+asio::io_context& Connection::io_context() { return _lirasdk_impl.io_context(); }
+
+void Connection::drain_io_context() {
+    // Waiting for the io thread from the io thread would wait for ourselves. Nothing does
+    // this today; the assert is here so it stays that way.
+    assert(!_lirasdk_impl.on_io_thread());
+
+    auto& io_ctx = io_context();
+    if (io_ctx.stopped()) {
+        return;
+    }
+
+    std::promise<void> fence;
+    asio::post(io_ctx, [&fence]() { fence.set_value(); });
+    fence.get_future().wait();
+}
+
+Connection::Connection(ReceiverCallback receiver_callback, LibliraReceiverCallback liblira_receiver_callback,
+                       LirasdkImpl& lirasdk_impl, ForwardingOption forwarding_option)
+    : _receiver_callback(std::move(receiver_callback)),
+      _liblira_receiver_callback(std::move(liblira_receiver_callback)),
+      _lirasdk_impl(lirasdk_impl),
+      _liralink_receiver(),
+      _liblira_receiver(),
+      _forwarding_option(forwarding_option) {
+    // Insert system ID 0 in all connections for broadcast.
+    _system_ids.insert(0);
+
+    if (forwarding_option == ForwardingOption::ForwardingOn) {
+        _forwarding_connections_count++;
+    }
+
+    if (const char* env_p = std::getenv("LIRASDK_LIRALINK_DIRECT_DEBUGGING")) {
+        if (std::string(env_p) == "1") {
+            _debugging = true;
+        }
+    }
+}
+
+Connection::~Connection() {
+    // Just in case a specific connection didn't call it already.
+    stop_liralink_receiver();
+    stop_liblira_receiver();
+    _receiver_callback         = {};
+    _liblira_receiver_callback = {};
+}
+
+bool Connection::start_liralink_receiver() {
+    if (!_liralink_receiver) {
+        _liralink_receiver = std::make_unique<LiralinkReceiver>();
+    }
+    return true;
+}
+
+void Connection::stop_liralink_receiver() {
+    if (_liralink_receiver) {
+        _liralink_receiver.reset();
+    }
+}
+
+bool Connection::start_liblira_receiver() {
+    std::lock_guard<std::mutex> lock(_liblira_receiver_mutex);
+    _liblira_receiver = std::make_shared<LibliraReceiver>(_lirasdk_impl);
+    return true;
+}
+
+void Connection::stop_liblira_receiver() {
+    std::lock_guard<std::mutex> lock(_liblira_receiver_mutex);
+    // Reset under the mutex so that concurrent get_liblira_receiver() calls
+    // either see a valid shared_ptr before the reset or nullptr after.
+    _liblira_receiver.reset();
+}
+
+void Connection::receive_liblira_message(const Lirasdk::LiralinkMessage& message, Connection* connection) {
+    // Register system ID when receiving a message from a new system.
+    {
+        std::lock_guard<std::mutex> lock(_system_ids_mutex);
+        _system_ids.insert(message.system_id);
+    }
+
+    if (_debugging) {
+        LogDebug("Connection::receive_liblira_message: {} from system {}", message.message_name, message.system_id);
+    }
+
+    if (_liblira_receiver_callback) {
+        if (_debugging) {
+            LogDebug("Calling liblira receiver callback for: {}", message.message_name);
+        }
+        _liblira_receiver_callback(message, connection);
+    } else {
+        LogWarn("No liblira receiver callback set!");
+    }
+}
+
+void Connection::receive_message(LiralinkReceiver::ParseResult result, liralink_message_t& message,
+                                 Connection* connection) {
+    // Register system ID for valid messages
+    if (result == LiralinkReceiver::ParseResult::MessageParsed) {
+        std::lock_guard<std::mutex> lock(_system_ids_mutex);
+        _system_ids.insert(message.sysid);
+    }
+    // Let LirasdkImpl handle the ParseResult (queue for processing or forward-only)
+    _receiver_callback(result, message, connection);
+}
+
+void Connection::report_send_error(const std::string& message) {
+    _lirasdk_impl.report_connection_error(message, _handle);
+}
+
+bool Connection::should_forward_messages() const { return _forwarding_option == ForwardingOption::ForwardingOn; }
+
+unsigned Connection::forwarding_connections_count() { return _forwarding_connections_count; }
+
+bool Connection::has_system_id(uint8_t system_id) {
+    std::lock_guard<std::mutex> lock(_system_ids_mutex);
+    return _system_ids.find(system_id) != _system_ids.end();
+}
+
+#ifdef WINDOWS
+std::string get_socket_error_string(int error_code) {
+    if (error_code == 0) {
+        return "";
+    }
+
+    LPVOID lpMsgBuf = nullptr;
+    DWORD  bufLen =
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
+                      error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+
+    if (bufLen) {
+        LPCSTR      lpMsgStr = (LPCSTR)lpMsgBuf;
+        std::string result(lpMsgStr, lpMsgStr + bufLen);
+        LocalFree(lpMsgBuf);
+
+        // Remove trailing newline if present
+        if (!result.empty() && result[result.length() - 1] == '\n') {
+            result.erase(result.length() - 1);
+        }
+        if (!result.empty() && result[result.length() - 1] == '\r') {
+            result.erase(result.length() - 1);
+        }
+
+        return result;
+    }
+
+    return std::to_string(error_code);
+}
+#endif
+
+}  // namespace lirasdk
