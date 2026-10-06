@@ -1,9 +1,9 @@
 #pragma once
 
-#include "liralink_include.hpp"
+#include "lira_protocol_include.hpp"
 #include "lirasdk.hpp"
-#include "liralink_receiver.hpp"
-#include "liblira_receiver.hpp"
+#include "lira_protocol_receiver.hpp"
+#include "lira_distributing_receiver.hpp"
 #include <asio/io_context.hpp>
 #include <atomic>
 #include <memory>
@@ -18,20 +18,20 @@ class LirasdkImpl;  // Forward declaration
 
 class Connection {
  public:
-    using ReceiverCallback =
-        std::function<void(LiralinkReceiver::ParseResult result, liralink_message_t& message, Connection* connection)>;
-    using LibliraReceiverCallback =
-        std::function<void(const Lirasdk::LiralinkMessage& message, Connection* connection)>;
+    using ReceiverCallback = std::function<void(LiraProtocolReceiver::ParseResult result,
+                                                lira_protocol_message_t& message, Connection* connection)>;
+    using LiraDistributingReceiverCallback =
+        std::function<void(const Lirasdk::LiraProtocolMessage& message, Connection* connection)>;
 
-    explicit Connection(ReceiverCallback receiver_callback, LibliraReceiverCallback liblira_receiver_callback,
-                        LirasdkImpl&     lirasdk_impl,
+    explicit Connection(ReceiverCallback                 receiver_callback,
+                        LiraDistributingReceiverCallback lira_distributing_receiver_callback, LirasdkImpl& lirasdk_impl,
                         ForwardingOption forwarding_option = ForwardingOption::ForwardingOff);
     virtual ~Connection();
 
     virtual ConnectionResult start() = 0;
     virtual ConnectionResult stop()  = 0;
 
-    virtual std::pair<bool, std::string> send_message(const liralink_message_t& message) = 0;
+    virtual std::pair<bool, std::string> send_message(const lira_protocol_message_t& message) = 0;
 
     // Send raw bytes for forwarding unknown messages
     virtual std::pair<bool, std::string> send_raw_bytes(const char* bytes, size_t length) = 0;
@@ -45,12 +45,12 @@ class Connection {
     // asynchronous send failure to itself; see report_send_error().
     void set_handle(Lirasdk::ConnectionHandle handle) { _handle = handle; }
 
-    // Access to liblira receiver for message creation.
+    // Access to lira_distributing receiver for message creation.
     // Returns a shared_ptr so the caller can safely use the object even if
-    // stop_liblira_receiver() is called concurrently on another thread.
-    std::shared_ptr<LibliraReceiver> get_liblira_receiver() {
-        std::lock_guard<std::mutex> lock(_liblira_receiver_mutex);
-        return _liblira_receiver;
+    // stop_lira_distributing_receiver() is called concurrently on another thread.
+    std::shared_ptr<LiraDistributingReceiver> get_lira_distributing_receiver() {
+        std::lock_guard<std::mutex> lock(_lira_distributing_receiver_mutex);
+        return _lira_distributing_receiver;
     }
 
     // Non-copyable
@@ -58,13 +58,14 @@ class Connection {
     const Connection& operator=(const Connection&) = delete;
 
  protected:
-    bool start_liralink_receiver();
-    void stop_liralink_receiver();
-    void receive_message(LiralinkReceiver::ParseResult result, liralink_message_t& message, Connection* connection);
+    bool start_lira_protocol_receiver();
+    void stop_lira_protocol_receiver();
+    void receive_message(LiraProtocolReceiver::ParseResult result, lira_protocol_message_t& message,
+                         Connection* connection);
 
-    bool start_liblira_receiver();
-    void stop_liblira_receiver();
-    void receive_liblira_message(const Lirasdk::LiralinkMessage& message, Connection* connection);
+    bool start_lira_distributing_receiver();
+    void stop_lira_distributing_receiver();
+    void receive_lira_distributing_message(const Lirasdk::LiraProtocolMessage& message, Connection* connection);
 
     // The io_context every connection does its async I/O on, owned by LirasdkImpl.
     // Preferable to static_cast-ing socket.get_executor().context() back to an
@@ -89,15 +90,16 @@ class Connection {
     // dropped. At the LIRALink maximum of 280 bytes this caps a stalled link at ~280 KiB.
     static constexpr std::size_t MAX_TX_QUEUE_ITEMS = 1024;
 
-    ReceiverCallback                  _receiver_callback{};
-    LibliraReceiverCallback           _liblira_receiver_callback{};
-    LirasdkImpl&                      _lirasdk_impl;  // For thread-safe MessageSet access
-    std::unique_ptr<LiralinkReceiver> _liralink_receiver;
-    std::shared_ptr<LibliraReceiver>  _liblira_receiver;  // guarded by _liblira_receiver_mutex
-    mutable std::mutex                _liblira_receiver_mutex;
-    ForwardingOption                  _forwarding_option;
-    std::mutex                        _system_ids_mutex;
-    std::unordered_set<uint8_t>       _system_ids;
+    ReceiverCallback                      _receiver_callback{};
+    LiraDistributingReceiverCallback      _lira_distributing_receiver_callback{};
+    LirasdkImpl&                          _lirasdk_impl;  // For thread-safe MessageSet access
+    std::unique_ptr<LiraProtocolReceiver> _lira_protocol_receiver;
+    std::shared_ptr<LiraDistributingReceiver>
+                                _lira_distributing_receiver;  // guarded by _lira_distributing_receiver_mutex
+    mutable std::mutex          _lira_distributing_receiver_mutex;
+    ForwardingOption            _forwarding_option;
+    std::mutex                  _system_ids_mutex;
+    std::unordered_set<uint8_t> _system_ids;
 
     // Set once by set_handle() during registration, read afterwards by
     // report_send_error() on the io thread. The registration happens under
@@ -109,7 +111,7 @@ class Connection {
 
     static std::atomic<unsigned> _forwarding_connections_count;
 
-    // void received_liralink_message(liralink_message_t &);
+    // void received_lira_protocol_message(lira_protocol_message_t &);
 };
 
 #ifdef WINDOWS

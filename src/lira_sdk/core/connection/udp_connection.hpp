@@ -12,8 +12,9 @@ namespace lirasdk {
 
 class UdpConnection : public Connection {
  public:
-    UdpConnection(ReceiverCallback receiver_callback, LibliraReceiverCallback liblira_receiver_callback,
-                  LirasdkImpl& lirasdk_impl, const std::string& local_ip, int local_port,
+    UdpConnection(ReceiverCallback                 receiver_callback,
+                  LiraDistributingReceiverCallback lira_distributing_receiver_callback, LirasdkImpl& lirasdk_impl,
+                  const std::string& local_ip, int local_port,
                   ForwardingOption forwarding_option = ForwardingOption::ForwardingOff);
 
     ~UdpConnection() override;
@@ -21,7 +22,7 @@ class UdpConnection : public Connection {
     ConnectionResult start() override;
     ConnectionResult stop() override;
 
-    std::pair<bool, std::string> send_message(const liralink_message_t& message) override;
+    std::pair<bool, std::string> send_message(const lira_protocol_message_t& message) override;
     std::pair<bool, std::string> send_raw_bytes(const char* bytes, size_t length) override;
 
  private:

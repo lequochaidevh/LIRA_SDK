@@ -1,4 +1,4 @@
-#include "liblira_receiver.hpp"
+#include "lira_distributing_receiver.hpp"
 #include "lirasdk_impl.hpp"
 #include <nlohmann/json.hpp>
 #include <variant>
@@ -19,7 +19,7 @@ namespace {
     // PARAM_EXT_{VALUE,SET,ACK}.param_value (char[128]).
     //
     // Such fields must be represented in JSON as a byte array, not a string:
-    //  - liblira's getString() truncates char[] at the first NUL (strnlen), which
+    //  - lira_distributing's getString() truncates char[] at the first NUL (strnlen), which
     //    corrupts any value containing a zero byte, and
     //  - the bytes are usually not valid UTF-8.
     //
@@ -49,16 +49,16 @@ namespace {
 
 }  // namespace
 
-LibliraReceiver::LibliraReceiver(LirasdkImpl& lirasdk_impl) : _lirasdk_impl(lirasdk_impl) {
+LiraDistributingReceiver::LiraDistributingReceiver(LirasdkImpl& lirasdk_impl) : _lirasdk_impl(lirasdk_impl) {
     // No need for individual BufferParser - we'll use LirasdkImpl's thread-safe parsing
-    if (const char* env_p = std::getenv("LIRASDK_LIRALINK_DIRECT_DEBUGGING")) {
+    if (const char* env_p = std::getenv("LIRASDK_LIRA_PROTOCOL_DIRECT_DEBUGGING")) {
         if (std::string(env_p) == "1") {
             _debugging = true;
         }
     }
 }
 
-void LibliraReceiver::set_new_datagram(char* datagram, unsigned datagram_len) {
+void LiraDistributingReceiver::set_new_datagram(char* datagram, unsigned datagram_len) {
     // Append new data to accumulation buffer (for serial where messages can span multiple reads)
     _accumulation_buffer.insert(_accumulation_buffer.end(), reinterpret_cast<uint8_t*>(datagram),
                                 reinterpret_cast<uint8_t*>(datagram) + datagram_len);
@@ -72,16 +72,16 @@ void LibliraReceiver::set_new_datagram(char* datagram, unsigned datagram_len) {
     }
 }
 
-bool LibliraReceiver::parse_message() {
+bool LiraDistributingReceiver::parse_message() {
     if (_accumulation_buffer.empty()) {
         return false;
     }
 
-    // Use liblira to parse messages from the accumulation buffer
-    return parse_liblira_message_from_buffer();
+    // Use lira_distributing to parse messages from the accumulation buffer
+    return parse_message_from_buffer();
 }
 
-bool LibliraReceiver::parse_liblira_message_from_buffer() {
+bool LiraDistributingReceiver::parse_message_from_buffer() {
     size_t bytes_consumed = 0;
 
     // Use thread-safe parsing from LirasdkImpl (handles MessageSet synchronization internally)
@@ -108,18 +108,18 @@ bool LibliraReceiver::parse_liblira_message_from_buffer() {
     auto header = message.header();
 
     // Generate complete JSON with all field values
-    // std::string json = liblira_message_to_json(message);
+    // std::string json = lira_distributing_message_to_json(message);
 
     // Fill our message structures
-    _last_liblira_message      = message;
-    _last_message.message_name = message.name();
-    _last_message.system_id    = header.systemId();
-    _last_message.component_id = header.componentId();
+    _last_lira_distributing_message = message;
+    _last_message.message_name      = message.name();
+    _last_message.system_id         = header.systemId();
+    _last_message.component_id      = header.componentId();
 
-    if (_last_liblira_message) {
-        const uint32_t wire_len = _last_liblira_message->finalizedSize();
+    if (_last_lira_distributing_message) {
+        const uint32_t wire_len = _last_lira_distributing_message->finalizedSize();
         if (wire_len > 0) {
-            const uint8_t* wire_ptr = _last_liblira_message->data();
+            const uint8_t* wire_ptr = _last_lira_distributing_message->data();
             _last_message.raw_bytes.assign(wire_ptr, wire_ptr + wire_len);
         } else {
             _last_message.raw_bytes.clear();
@@ -151,7 +151,7 @@ bool LibliraReceiver::parse_liblira_message_from_buffer() {
     return true;
 }
 
-// std::string LibliraReceiver::liblira_message_to_json(const lira::Message& msg) const {
+// std::string LiraDistributingReceiver::lira_distributing_message_to_json(const lira::Message& msg) const {
 //     // Use ordered_json so fields keep their LIRALink XML-definition order
 //     // (plain nlohmann::json would sort keys alphabetically). nlohmann handles
 //     // string escaping and renders NaN/Inf as null on dump().
@@ -211,21 +211,21 @@ bool LibliraReceiver::parse_liblira_message_from_buffer() {
 //     return json.dump(-1, ' ', false, nlohmann::ordered_json::error_handler_t::replace);
 // }
 
-// std::optional<std::string> LibliraReceiver::message_id_to_name(uint32_t id) const {
+// std::optional<std::string> LiraDistributingReceiver::message_id_to_name(uint32_t id) const {
 //     return _lirasdk_impl.message_id_to_name_safe(id);
 // }
 
-// std::optional<int> LibliraReceiver::message_name_to_id(const std::string& name) const {
+// std::optional<int> LiraDistributingReceiver::message_name_to_id(const std::string& name) const {
 //     return _lirasdk_impl.message_name_to_id_safe(name);
 // }
 
-// std::optional<lira::Message> LibliraReceiver::create_message(const std::string& message_name) const {
+// std::optional<lira::Message> LiraDistributingReceiver::create_message(const std::string& message_name) const {
 //     return _lirasdk_impl.create_message_safe(message_name);
 // }
 
-// bool LibliraReceiver::load_custom_xml(const std::string& xml_content) {
-//     // Note: This method should not be called directly on LibliraReceiver instances.
-//     // Use LiralinkDirect::load_custom_xml() instead which goes through proper channels.
+// bool LiraDistributingReceiver::load_custom_xml(const std::string& xml_content) {
+//     // Note: This method should not be called directly on LiraDistributingReceiver instances.
+//     // Use LiraProtocolDirect::load_custom_xml() instead which goes through proper channels.
 
 //     // Use thread-safe method from LirasdkImpl
 //     return _lirasdk_impl.load_custom_xml_to_message_set(xml_content);

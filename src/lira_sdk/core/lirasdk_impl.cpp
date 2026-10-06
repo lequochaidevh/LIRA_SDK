@@ -1,4 +1,4 @@
-#include "liralink_receiver.hpp"
+#include "lira_protocol_receiver.hpp"
 #include "lirasdk_impl.hpp"
 #include <iostream>
 
@@ -81,19 +81,20 @@ std::optional<lira::Message> LirasdkImpl::parse_message_safe(const uint8_t* buff
     return std::nullopt;
 }
 
-void LirasdkImpl::receive_message(LiralinkReceiver::ParseResult result, liralink_message_t& message,
+void LirasdkImpl::receive_message(LiraProtocolReceiver::ParseResult result, lira_protocol_message_t& message,
                                   Connection* connection) {
-    if (result == LiralinkReceiver::ParseResult::MessageParsed) {
+    if (result == LiraProtocolReceiver::ParseResult::MessageParsed) {
         process_message(message, connection);
     }
 }
 
-void LirasdkImpl::receive_liblira_message(const Lirasdk::LiralinkMessage& message, Connection* connection) {
+void LirasdkImpl::receive_lira_distributing_message(const Lirasdk::LiraProtocolMessage& message,
+                                                    Connection*                         connection) {
     (void)message;
     (void)connection;
 }
 
-void LirasdkImpl::process_message(liralink_message_t& message, Connection* connection) {
+void LirasdkImpl::process_message(lira_protocol_message_t& message, Connection* connection) {
     (void)connection;
     std::cout << "[LiraSDK Core] Packaged Catch! Message ID: " << message.msgid
               << " from Drone System ID: " << static_cast<int>(message.sysid) << std::endl;

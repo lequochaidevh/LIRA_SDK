@@ -1,6 +1,6 @@
 #pragma once
 
-#include "liralink_include.hpp"
+#include "lira_protocol_include.hpp"
 #include "lirasdk.hpp"
 
 #include <string>
@@ -92,7 +92,7 @@ class Message {
 
 // Mirror it over to your main SDK integration wrapper definitions namespace alias map
 namespace Lirasdk {
-using LiralinkMessage = lira::Message;
+using LiraProtocolMessage = lira::Message;
 }
 
 namespace Json {
@@ -104,13 +104,15 @@ namespace lirasdk {
 // Forward declaration for thread-safe MessageSet operations
 class LirasdkImpl;
 
-class LibliraReceiver {
+class LiraDistributingReceiver {
  public:
-    explicit LibliraReceiver(LirasdkImpl& lirasdk_impl);
-    ~LibliraReceiver() = default;  // Need explicit destructor for unique_ptr with incomplete type
+    explicit LiraDistributingReceiver(LirasdkImpl& lirasdk_impl);
+    ~LiraDistributingReceiver() = default;  // Need explicit destructor for unique_ptr with incomplete type
 
-    const Lirasdk::LiralinkMessage&     get_last_message() const { return _last_message; }
-    const std::optional<lira::Message>& get_last_liblira_message() const { return _last_liblira_message; }
+    const Lirasdk::LiraProtocolMessage& get_last_message() const { return _last_message; }
+    const std::optional<lira::Message>& get_last_lira_distributing_message() const {
+        return _last_lira_distributing_message;
+    }
 
     void set_new_datagram(char* datagram, unsigned datagram_len);
 
@@ -127,13 +129,13 @@ class LibliraReceiver {
     bool load_custom_xml(const std::string& xml_content);
 
     // JSON conversion (made public for use in message interception)
-    std::string liblira_message_to_json(const lira::Message& msg) const;
+    std::string lira_distributing_message_to_json(const lira::Message& msg) const;
 
  private:
     LirasdkImpl&                                _lirasdk_impl;  // For thread-safe MessageSet access
     mutable std::unique_ptr<lira::BufferParser> _buffer_parser;
-    Lirasdk::LiralinkMessage                    _last_message;
-    std::optional<lira::Message>                _last_liblira_message;  // Separate liblira message for integration
+    Lirasdk::LiraProtocolMessage                _last_message;
+    std::optional<lira::Message> _last_lira_distributing_message;  // Separate lira_distributing message for integration
 
     // Accumulation buffer for connections where messages can span multiple reads.
     //
@@ -149,7 +151,7 @@ class LibliraReceiver {
     bool _debugging = false;
 
     // Helper methods
-    bool parse_liblira_message_from_buffer();
+    bool parse_message_from_buffer();
 };
 
 }  // namespace lirasdk

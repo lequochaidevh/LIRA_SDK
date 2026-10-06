@@ -13,7 +13,7 @@
 #include "call_every_handler.hpp"
 #include "handle_factory.hpp"
 
-#include "liralink_receiver.hpp"
+#include "lira_protocol_receiver.hpp"
 
 #include "lirasdk.hpp"
 
@@ -40,9 +40,10 @@ class LirasdkImpl {
      */
     [[nodiscard]] asio::io_context& io_context() { return _io_context; }
 
-    void receive_message(LiralinkReceiver::ParseResult result, liralink_message_t& message, Connection* connection);
+    void receive_message(LiraProtocolReceiver::ParseResult result, lira_protocol_message_t& message,
+                         Connection* connection);
 
-    void receive_liblira_message(const Lirasdk::LiralinkMessage& message, Connection* connection);
+    void receive_lira_distributing_message(const Lirasdk::LiraProtocolMessage& message, Connection* connection);
 
     Lirasdk::ConnectionHandle add_connection(std::unique_ptr<Connection>&& connection);
 
@@ -73,7 +74,7 @@ class LirasdkImpl {
     //  [[nodiscard]] CallEveryHandler& call_every_handler() { return _call_every_handler; }
 
  private:
-    void process_message(liralink_message_t& message, Connection* connection);
+    void process_message(lira_protocol_message_t& message, Connection* connection);
 
     // Temp: gen id HandleFactory
     uint64_t _next_connection_handle{1};

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "liralink/liralink_types.h"
+#include "lira_protocol/lira_protocol_types.h"
 
-// We provide our own liralink_get_channel_status with controlled storage,
+// We provide our own lira_protocol_get_channel_status with controlled storage,
 // and export it so that tests can link against it.
-#define LIRALINK_GET_CHANNEL_STATUS
+#define LIRA_PROTOCOL_GET_CHANNEL_STATUS
 #if defined(_WIN32) && defined(LIRASDK_SHARED) && defined(LIRASDK_BUILD)
 __declspec(dllexport)
 #elif defined(_WIN32) && defined(LIRASDK_SHARED)
@@ -12,6 +12,6 @@ __declspec(dllimport)
 #elif !defined(_WIN32)
 __attribute__((visibility("default")))
 #endif
-    liralink_status_t* liralink_get_channel_status(uint8_t chan);
+    lira_protocol_status_t* lira_protocol_get_channel_status(uint8_t chan);
 
-#include "liralink/@LIRALINK_DIALECT@/liralink.h"
+#include "lira_protocol/@LIRA_PROTOCOL_DIALECT@/lira_protocol.h"
