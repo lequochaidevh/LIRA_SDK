@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#define LIRA_MAX_MESSAGE_ID 256
+
 #ifdef __cplusplus
 extern "C" {
 #endif

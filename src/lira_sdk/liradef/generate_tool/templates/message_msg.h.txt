@@ -41,4 +41,36 @@ static inline void lira_msg_{{ msg.name.lower() }}_decode(lira_msg_{{ msg.name.l
 }
 #endif
 
+/* AUTOMATED C++ COMPILE-TIME TRAITS INJECTION LAYER (SHIELDED) */
+#ifdef __cplusplus
+
+// Defensive shielding: If a parent include leaked an open extern "C" block, 
+// we temporarily break out of it to compile our C++ templates cleanly.
+#ifdef __cplusplus
+} // Force close any potential lingering external C-linkage blocks safely
+#endif
+
+namespace lirasdk {
+
+// Forward declaration of the base master trait template
+template <typename T>
+struct LiraMessageTraits;
+
+// Explicit specialization mapping this concrete struct type to its protocol properties
+template <>
+struct LiraMessageTraits<lira_msg_{{ msg.name.lower() }}_t> {
+    static constexpr uint32_t msgid = LIRA_MSG_ID_{{ msg.name }};
+    static constexpr const char* name = "{{ msg.name }}";
+    
+    static void decode(lira_msg_{{ msg.name.lower() }}_t* dest, const uint8_t* src) {
+        lira_msg_{{ msg.name.lower() }}_decode(dest, src);
+    }
+};
+
+} // namespace lirasdk
+
+// Re-open C linkage if this file was nested inside a parent block to prevent breaks below
+extern "C" { 
+#endif
+
 #endif /* LIRA_MSG_{{ msg.name }}_H */

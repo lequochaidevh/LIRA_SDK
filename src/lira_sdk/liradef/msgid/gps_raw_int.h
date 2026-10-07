@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define LIRA_MSG_ID_GPS_RAW_INT 33
+#define LIRA_MSG_ID_GPS_RAW_INT  33
 #define LIRA_MSG_LEN_GPS_RAW_INT 27
 
 #ifdef __cplusplus
@@ -15,15 +15,15 @@ extern "C" {
 #endif
 
 #pragma pack(push, 1)
-typedef struct __lira_msg_gps_raw_int { 
-    uint64_t 	 time_usec; /* Timestamp in microseconds */ 
-    int32_t 	 lat; /* Latitude (WGS84), multiplied by 1e7 */ 
-    int32_t 	 lon; /* Longitude (WGS84), multiplied by 1e7 */ 
-    int32_t 	 alt; /* Altitude (MSL) in millimeters */ 
-    uint16_t 	 eph; /* GPS HDOP horizontal dilution of precision */ 
-    uint16_t 	 epv; /* GPS VDOP vertical dilution of precision */ 
-    uint16_t 	 vel; /* GPS ground speed in cm/s */ 
-    uint8_t 	 satellites_visible; /* Number of satellites visible */ 
+typedef struct __lira_msg_gps_raw_int {
+    uint64_t time_usec;          /* Timestamp in microseconds */
+    int32_t  lat;                /* Latitude (WGS84), multiplied by 1e7 */
+    int32_t  lon;                /* Longitude (WGS84), multiplied by 1e7 */
+    int32_t  alt;                /* Altitude (MSL) in millimeters */
+    uint16_t eph;                /* GPS HDOP horizontal dilution of precision */
+    uint16_t epv;                /* GPS VDOP vertical dilution of precision */
+    uint16_t vel;                /* GPS ground speed in cm/s */
+    uint8_t  satellites_visible; /* Number of satellites visible */
 } lira_msg_gps_raw_int_t;
 #pragma pack(pop)
 
@@ -44,6 +44,36 @@ static inline void lira_msg_gps_raw_int_decode(lira_msg_gps_raw_int_t *msg, cons
 
 #ifdef __cplusplus
 }
+#endif
+
+/* AUTOMATED C++ COMPILE-TIME TRAITS INJECTION LAYER (SHIELDED) */
+#ifdef __cplusplus
+
+// Defensive shielding: If a parent include leaked an open extern "C" block,
+// we temporarily break out of it to compile our C++ templates cleanly.
+#ifdef __cplusplus
+}  // Force close any potential lingering external C-linkage blocks safely
+#endif
+
+namespace lirasdk {
+
+// Forward declaration of the base master trait template
+template <typename T>
+struct LiraMessageTraits;
+
+// Explicit specialization mapping this concrete struct type to its protocol properties
+template <>
+struct LiraMessageTraits<lira_msg_gps_raw_int_t> {
+    static constexpr uint32_t    msgid = LIRA_MSG_ID_GPS_RAW_INT;
+    static constexpr const char *name  = "GPS_RAW_INT";
+
+    static void decode(lira_msg_gps_raw_int_t *dest, const uint8_t *src) { lira_msg_gps_raw_int_decode(dest, src); }
+};
+
+}  // namespace lirasdk
+
+// Re-open C linkage if this file was nested inside a parent block to prevent breaks below
+extern "C" {
 #endif
 
 #endif /* LIRA_MSG_GPS_RAW_INT_H */
