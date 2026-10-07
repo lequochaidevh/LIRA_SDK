@@ -5,9 +5,9 @@
 #define LIRA_MESSAGE_SET_H
 
 #include <stdint.h>
-#include "MessageDefinition.h"
-#include "heartbeat.h"
-#include "gps_raw_int.h"
+#include "msgid/msg_definition.h"
+#include "msgid/heartbeat.h"
+#include "msgid/gps_raw_int.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define LIRA_MSG_ID_HEARTBEAT 1
+#define LIRA_MSG_ID_HEARTBEAT  1
 #define LIRA_MSG_LEN_HEARTBEAT 8
 
 #ifdef __cplusplus
@@ -15,12 +15,12 @@ extern "C" {
 #endif
 
 #pragma pack(push, 1)
-typedef struct __lira_msg_heartbeat { 
-    uint8_t 	 type; /* Type of the system (Drone, GCS, etc.) */ 
-    uint8_t 	 autobot; /* Autopilot type (PX4, ArduPilot, etc.) */ 
-    uint8_t 	 base_mode; /* System mode bitfield */ 
-    uint32_t 	 custom_mode; /* Navigation mode index */ 
-    uint8_t 	 system_status; /* System status identifier */ 
+typedef struct __lira_msg_heartbeat {
+    uint8_t  type;          /* Type of the system (Drone, GCS, etc.) */
+    uint8_t  autobot;       /* Autopilot type (PX4, ArduPilot, etc.) */
+    uint8_t  base_mode;     /* System mode bitfield */
+    uint32_t custom_mode;   /* Navigation mode index */
+    uint8_t  system_status; /* System status identifier */
 } lira_msg_heartbeat_t;
 #pragma pack(pop)
 
@@ -41,6 +41,36 @@ static inline void lira_msg_heartbeat_decode(lira_msg_heartbeat_t *msg, const ui
 
 #ifdef __cplusplus
 }
+#endif
+
+/* AUTOMATED C++ COMPILE-TIME TRAITS INJECTION LAYER (SHIELDED) */
+#ifdef __cplusplus
+
+// Defensive shielding: If a parent include leaked an open extern "C" block,
+// we temporarily break out of it to compile our C++ templates cleanly.
+#ifdef __cplusplus
+}  // Force close any potential lingering external C-linkage blocks safely
+#endif
+
+namespace lirasdk {
+
+// Forward declaration of the base master trait template
+template <typename T>
+struct LiraMessageTraits;
+
+// Explicit specialization mapping this concrete struct type to its protocol properties
+template <>
+struct LiraMessageTraits<lira_msg_heartbeat_t> {
+    static constexpr uint32_t    msgid = LIRA_MSG_ID_HEARTBEAT;
+    static constexpr const char *name  = "HEARTBEAT";
+
+    static void decode(lira_msg_heartbeat_t *dest, const uint8_t *src) { lira_msg_heartbeat_decode(dest, src); }
+};
+
+}  // namespace lirasdk
+
+// Re-open C linkage if this file was nested inside a parent block to prevent breaks below
+extern "C" {
 #endif
 
 #endif /* LIRA_MSG_HEARTBEAT_H */
