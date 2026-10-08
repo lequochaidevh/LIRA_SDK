@@ -22,6 +22,11 @@ class UdpConnection : public Connection {
     ConnectionResult start() override;
     ConnectionResult stop() override;
 
+    template <typename MessageType>
+    void register_lira_protocol_receiver_callback(std::function<bool(const MessageType&)> callback) {
+        _lira_protocol_receiver->register_callback<MessageType>(std::move(callback));
+    }
+
     std::pair<bool, std::string> send_message(const lira_protocol_message_t& message) override;
     std::pair<bool, std::string> send_raw_bytes(const char* bytes, size_t length) override;
 

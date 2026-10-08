@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <mutex>
+#include <array>
+#include <memory>
 #include <functional>
 
 // Include our auto-generated pure C serialization headers
@@ -9,10 +11,34 @@
 
 namespace lirasdk {
 
-// Map the missing envelope type directly onto your pure C structure
 using lira_protocol_message_t = lira_message_t;
 
+// Map the missing envelope type directly onto your pure C structure
 class LiraProtocolReceiver {
+ private:
+    class CallbackWrapper {
+     public:
+        virtual ~CallbackWrapper()                   = default;
+        virtual bool execute(const uint8_t* payload) = 0;
+    };
+
+    template <typename T>
+    class TypedCallbackWrapper : public CallbackWrapper {
+     public:
+        explicit TypedCallbackWrapper(std::function<bool(const T&)> cb) : _cb(cb) {}
+        bool execute(const uint8_t* payload) override {
+            T decoded_struct;
+            LiraMessageTraits<T>::decode(&decoded_struct, payload);
+            return _cb(decoded_struct);
+        }
+
+     private:
+        std::function<bool(const T&)> _cb;
+    };
+
+    std::mutex    _mutex{};
+    lira_status_t _parser_status{};
+
  public:
     // Define the missing ParseResult enum explicitly
     enum class ParseResult {
@@ -33,21 +59,24 @@ class LiraProtocolReceiver {
      */
     ParseResult parse_bytes(uint8_t c, lira_protocol_message_t& message);
 
-    // Subscribers hooks
-    using heartbeat_callback_t = std::function<void(const lira_msg_heartbeat_t&)>;
-    using gps_callback_t       = std::function<void(const lira_msg_gps_raw_int_t&)>;
+    /**
+     * @brief O(1) TYPE-SAFE REGISTRATION: Fast direct index insertion
+     */
+    template <typename MessageType>
+    void register_callback(std::function<bool(const MessageType&)> callback) {
+        std::lock_guard<std::mutex> lock(_mutex);
 
-    void register_heartbeat_callback(heartbeat_callback_t callback);
-    void register_gps_callback(gps_callback_t callback);
+        uint32_t msgid = LiraMessageTraits<MessageType>::msgid;
 
- private:
+        // Safety guard for array bounds
+        if (msgid < LIRA_MAX_MESSAGE_ID) {
+            _callbacks[msgid].push_back(std::make_unique<TypedCallbackWrapper<MessageType>>(callback));
+        }
+    }
+
     void route_verified_message(const lira_protocol_message_t& message);
 
-    std::mutex    _mutex{};
-    lira_status_t _parser_status{};
-
-    heartbeat_callback_t _heartbeat_callback{nullptr};
-    gps_callback_t       _gps_callback{nullptr};
+    std::array<std::vector<std::unique_ptr<CallbackWrapper>>, LIRA_MAX_MESSAGE_ID> _callbacks{};
 };
 
 }  // namespace lirasdk
