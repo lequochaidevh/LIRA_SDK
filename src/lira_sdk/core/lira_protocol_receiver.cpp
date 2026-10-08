@@ -1,5 +1,4 @@
 #include "lira_protocol_receiver.hpp"
-#include <iostream>
 
 namespace lirasdk {
 
@@ -29,32 +28,16 @@ LiraProtocolReceiver::ParseResult LiraProtocolReceiver::parse_bytes(uint8_t c, l
 }
 
 void LiraProtocolReceiver::route_verified_message(const lira_protocol_message_t& message) {
-    switch (static_cast<lira_message_id_t>(message.msgid)) {
-        case LIRA_MSG_ID_HEARTBEAT: {
-            lira_msg_heartbeat_t heartbeat_payload;
-            lira_msg_heartbeat_decode(&heartbeat_payload, message.payload);
-            if (_heartbeat_callback) _heartbeat_callback(heartbeat_payload);
-            break;
-        }
-        case LIRA_MSG_ID_GPS_RAW_INT: {
-            lira_msg_gps_raw_int_t gps_payload;
-            lira_msg_gps_raw_int_decode(&gps_payload, message.payload);
-            if (_gps_callback) _gps_callback(gps_payload);
-            break;
-        }
-        default:
-            break;
+    if (message.msgid >= LIRA_MAX_MESSAGE_ID) {
+        return;
     }
-}
 
-void LiraProtocolReceiver::register_heartbeat_callback(heartbeat_callback_t callback) {
     std::lock_guard<std::mutex> lock(_mutex);
-    _heartbeat_callback = std::move(callback);
-}
-
-void LiraProtocolReceiver::register_gps_callback(gps_callback_t callback) {
-    std::lock_guard<std::mutex> lock(_mutex);
-    _gps_callback = std::move(callback);
+    const auto&                 wrappers = _callbacks[message.msgid];
+    for (const auto& wrapper : wrappers) {
+        if (wrapper->execute(message.payload)) return;  // Callback list shutdown soon
+        // Todo make enum result
+    }
 }
 
 }  // namespace lirasdk
