@@ -99,7 +99,7 @@ class LirasdkImpl {
     std::thread                                                _io_thread{};
     std::thread::id                                            _io_thread_id{};
 
-    // Message set for libmav message handling (shared across all connections)
+    // Message set for liblira message handling (shared across all connections)
     std::unique_ptr<lira::BufferParser> _buffer_parser;  // Thread-safe parser
     mutable std::mutex                  _message_set_mutex;
 };

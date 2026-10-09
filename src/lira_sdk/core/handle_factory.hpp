@@ -33,6 +33,22 @@ class HandleFactory {
         return Handle<Args...>{next_id};
     }
 
+    /**
+     * Convert from another type of Handle into this one
+     */
+    template <typename... ArgsOther>
+    Handle<Args...> convert_from(const Handle<ArgsOther...>& other) {
+        return Handle<Args...>(other._id);
+    }
+
+    /**
+     * Convert from this type of Handle into another one
+     */
+    template <typename... ArgsOther>
+    Handle<ArgsOther...> convert_to(const Handle<Args...>& other) {
+        return Handle<ArgsOther...>(other._id);
+    }
+
  private:
     // Starts tracking handles from index 1 (0 represents an invalid Handle)
     std::atomic<uint64_t> _current_id{1};
