@@ -6,16 +6,17 @@
 #include <memory>
 #include <functional>
 
+#include "log.hpp"
+
 // Include our auto-generated pure C serialization headers
 #include "lira_protocol_include.hpp"
 
 namespace lirasdk {
 
-using lira_protocol_message_t = lira_message_t;
-
 // Map the missing envelope type directly onto your pure C structure
 class LiraProtocolReceiver {
  private:
+    using lira_protocol_message_t = lira_message_t;
     class CallbackWrapper {
      public:
         virtual ~CallbackWrapper()                   = default;

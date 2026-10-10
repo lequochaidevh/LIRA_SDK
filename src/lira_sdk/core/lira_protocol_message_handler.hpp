@@ -22,8 +22,7 @@ namespace lirasdk {
 // same io_context. That keeps everything single-threaded without locks, and post()
 // also makes it safe to (un)register from inside a callback (the mutation runs after
 // the current dispatch returns), with ordering preserved by post FIFO.
-// LIRA_TEST_EXPORT
-class LiraProtocolMessageHandler {
+class LIRASDK_TEST_EXPORT LiraProtocolMessageHandler {
  public:
     explicit LiraProtocolMessageHandler(asio::io_context& io_context);
 
