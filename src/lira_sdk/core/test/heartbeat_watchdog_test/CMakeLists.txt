@@ -21,7 +21,7 @@ register_gtest_target(sandbox
         "${BASE_SOURCE_PATH}/LIRA_SDK/src/lira_sdk/core/include/lira/"
         "${BASE_SOURCE_PATH}/LIRA_SDK/src/lira_sdk/core/"
         "${BASE_SOURCE_PATH}/LIRA_SDK/src/lira_sdk/"
-        "${BASE_SOURCE_PATH}/LIRA_SDK/src/lira_sdk/liradef/"
+        "${BASE_SOURCE_PATH}/LIRA_SDK/src/lira_sdk/lira_metadata/"
         "${INTERNAL_ROOT_SEARCH_PATH}/include/"
     LIBRARIES
         Threads::Threads

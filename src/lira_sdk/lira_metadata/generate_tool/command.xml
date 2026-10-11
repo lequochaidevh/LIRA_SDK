@@ -1,0 +1,18 @@
+<lira_protocol>
+    <!-- Define Global Enums first -->
+    <enums>
+        <enum name="LIRA_FRAME">
+            <entry value="0" name="LIRA_FRAME_GLOBAL" description="GPS coords, altitude relative to Mean Sea Level"/>
+            <entry value="1" name="LIRA_FRAME_LOCAL_NED" description="Local meter coords: North, East, Down"/>
+            <entry value="2" name="LIRA_FRAME_MISSION" description="Specialized mission framing tag"/>
+            <entry value="3" name="LIRA_FRAME_GLOBAL_RELATIVE_ALT" description="GPS coords, alt relative to home point (0m)"/>
+            <entry value="4" name="LIRA_FRAME_LOCAL_ENU" description="Local meter coords: East, North, Up"/>
+        </enum>
+    </enums>
+
+    <enum name="LIRA_CMD">
+        <entry value="512" name="LIRA_CMD_REQUEST_MESSAGE">Request a single instance of a particular message by ID</entry>
+        <entry value="511" name="LIRA_CMD_SET_MESSAGE_INTERVAL">Set the interval between messages for a particular stream</entry>
+    </enum>
+
+</lira_protocol>

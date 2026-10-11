@@ -6,8 +6,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "frame/msg.h"
-#include "msgid/msg_set.h"
+#include "utils/msg.h"
+#include "message_type/msg_set.h"
 
 #define LIRA_MAGIC_BYTE 0xFD
 

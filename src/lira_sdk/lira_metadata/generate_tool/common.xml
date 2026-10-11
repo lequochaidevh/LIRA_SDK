@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<liradef>
+<lira_metadata>
     <!-- Heartbeat Message Definition -->
     <message id="1" name="HEARTBEAT">
         <field type="uint8_t" name="type">Type of the system (Drone, GCS, etc.)</field>
@@ -20,4 +20,16 @@
         <field type="uint16_t" name="vel">GPS ground speed in cm/s</field>
         <field type="uint8_t" name="satellites_visible">Number of satellites visible</field>
     </message>
-</liradef>
+
+
+    <messages>
+        <!-- Raw Image Capture Message Definition. -->
+        <message id="263" name="CAMERA_IMAGE_CAPTURED">
+            <field type="uint32_t" name="time_boot_ms">Timestamp since system boot</field>
+            <field type="uint64_t" name="time_utc">UTC Timestamp</field>
+            <field type="int32_t" name="lat">Latitude where image was taken</field>
+            <field type="int32_t" name="lon">Longitude where image was taken</field>
+            <field type="int32_t" name="alt">Altitude above ground</field>
+        </message>
+    </messages>
+</lira_metadata>
