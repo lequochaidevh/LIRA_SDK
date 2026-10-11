@@ -51,3 +51,5 @@
 #else
 #define LIRASDK_TEMPL_INST
 #endif
+
+#define FAKE_TIME_OVERHEAD std::chrono::milliseconds(1)

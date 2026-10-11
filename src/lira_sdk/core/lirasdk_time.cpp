@@ -96,8 +96,13 @@ void FakeTime::sleep_for(std::chrono::nanoseconds ns) {
     add_overhead();
 }
 
-void FakeTime::add_overhead() { _current += std::chrono::microseconds(50); }
+void FakeTime::add_overhead() {
+    _current += std::chrono::microseconds(50);
 
+#ifdef FAKE_TIME_OVERHEAD
+    std::this_thread::sleep_for(FAKE_TIME_OVERHEAD);
+#endif
+}
 SystemTimePoint AutoBotTime::system_time() { return system_clock::now(); }
 
 AutoBotTimePoint AutoBotTime::now() {
