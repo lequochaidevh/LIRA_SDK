@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "utils/msg.h"
 
 #define LIRA_MSG_ID_GPS_RAW_INT  33
 #define LIRA_MSG_LEN_GPS_RAW_INT 27
@@ -30,15 +31,57 @@ typedef struct __lira_msg_gps_raw_int {
 /**
  * @brief Pack a lira_msg_gps_raw_int_t struct into a buffer
  */
-static inline uint16_t lira_msg_gps_raw_int_pack(uint8_t *buf, const lira_msg_gps_raw_int_t *msg) {
+static inline uint16_t lira_msg_gps_raw_int_pack(uint8_t* buf, const lira_msg_gps_raw_int_t* msg) {
     memcpy(buf, msg, sizeof(lira_msg_gps_raw_int_t));
     return sizeof(lira_msg_gps_raw_int_t);
 }
 
 /**
+ * @brief Auto-generated packing layout for LIRA Message: GPS_RAW_INT
+ * @note Total wire binary size: 27 bytes
+ */
+static inline uint16_t lira_protocol_msg_gps_raw_int_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t channel,
+                                                               lira_message_t* msg, uint64_t time_usec, int32_t lat,
+                                                               int32_t lon, int32_t alt, uint16_t eph, uint16_t epv,
+                                                               uint16_t vel, uint8_t satellites_visible) {
+    msg->msgid  = 33;
+    msg->sysid  = system_id;
+    msg->compid = component_id;
+
+    // msg->channel = channel;
+    // msg->len = 27;
+
+#pragma pack(push, 1)
+    struct {
+        uint64_t time_usec;          /*!< Timestamp in microseconds */
+        int32_t  lat;                /*!< Latitude (WGS84), multiplied by 1e7 */
+        int32_t  lon;                /*!< Longitude (WGS84), multiplied by 1e7 */
+        int32_t  alt;                /*!< Altitude (MSL) in millimeters */
+        uint16_t eph;                /*!< GPS HDOP horizontal dilution of precision */
+        uint16_t epv;                /*!< GPS VDOP vertical dilution of precision */
+        uint16_t vel;                /*!< GPS ground speed in cm/s */
+        uint8_t  satellites_visible; /*!< Number of satellites visible */
+    } _packet;
+#pragma pack(pop)
+
+    _packet.time_usec          = time_usec;
+    _packet.lat                = lat;
+    _packet.lon                = lon;
+    _packet.alt                = alt;
+    _packet.eph                = eph;
+    _packet.epv                = epv;
+    _packet.vel                = vel;
+    _packet.satellites_visible = satellites_visible;
+
+    memcpy(msg->payload, &_packet, 27);
+
+    return 27;
+}
+
+/**
  * @brief Decode a lira_msg_gps_raw_int_t struct from a buffer
  */
-static inline void lira_msg_gps_raw_int_decode(lira_msg_gps_raw_int_t *msg, const uint8_t *buf) {
+static inline void lira_msg_gps_raw_int_decode(lira_msg_gps_raw_int_t* msg, const uint8_t* buf) {
     memcpy(msg, buf, sizeof(lira_msg_gps_raw_int_t));
 }
 
@@ -65,9 +108,9 @@ struct LiraMessageTraits;
 template <>
 struct LiraMessageTraits<lira_msg_gps_raw_int_t> {
     static constexpr uint32_t    msgid = LIRA_MSG_ID_GPS_RAW_INT;
-    static constexpr const char *name  = "GPS_RAW_INT";
+    static constexpr const char* name  = "GPS_RAW_INT";
 
-    static void decode(lira_msg_gps_raw_int_t *dest, const uint8_t *src) { lira_msg_gps_raw_int_decode(dest, src); }
+    static void decode(lira_msg_gps_raw_int_t* dest, const uint8_t* src) { lira_msg_gps_raw_int_decode(dest, src); }
 };
 
 }  // namespace lirasdk

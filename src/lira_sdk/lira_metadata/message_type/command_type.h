@@ -26,6 +26,23 @@ typedef enum {
     LIRA_CMD_ENUM_END             = 2
 } LIRA_CMD;
 
+typedef enum {
+    LIRA_COMP_ID_AUTOBOT1 = 992, /* Engine by ID */
+    LIRA_COMP_ID_AUTOBOT2 = 993, /* Engine by ID */
+    LIRA_COMP_ENUM_END    = 2
+} LIRA_COMP;
+
+typedef enum {
+    LIRA_RESULT_ACCEPTED             = 0, /* Command executed successfully and acknowledged */
+    LIRA_RESULT_TEMPORARILY_REJECTED = 1, /* Command is valid but cannot be executed right now */
+    LIRA_RESULT_DENIED               = 2, /* Command is invalid or rejected by the system rules */
+    LIRA_RESULT_UNSUPPORTED          = 3, /* Command is not supported by this robot/drone hardware */
+    LIRA_RESULT_FAILED               = 4, /* Command is supported and accepted, but execution failed midway */
+    LIRA_RESULT_IN_PROGRESS          = 5, /* Command is being executed, progress updates will follow */
+    LIRA_RESULT_CANCELLED            = 6, /* Command execution was explicitly aborted or cancelled */
+    LIRA_RESULT_ENUM_END             = 7
+} LIRA_RESULT;
+
 #ifdef __cplusplus
 }
 #endif

@@ -8,7 +8,11 @@
 #include "message_type/msg_definition.h"
 #include "message_type/heartbeat.h"
 #include "message_type/gps_raw_int.h"
-#include "message_type/camera_image_captured.h"
+#include "message_type/command_ack.h"
+#include "message_type/command_int.h"
+#include "message_type/command_long.h"
+#include "message_type/command_type.h"
+#include "message_type/cam_img_capture.h"
 
 #ifdef __cplusplus
 extern "C" {

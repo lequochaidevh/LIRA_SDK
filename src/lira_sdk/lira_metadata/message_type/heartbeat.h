@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "utils/msg.h"
 
 #define LIRA_MSG_ID_HEARTBEAT  1
 #define LIRA_MSG_LEN_HEARTBEAT 8
@@ -27,15 +28,51 @@ typedef struct __lira_msg_heartbeat {
 /**
  * @brief Pack a lira_msg_heartbeat_t struct into a buffer
  */
-static inline uint16_t lira_msg_heartbeat_pack(uint8_t *buf, const lira_msg_heartbeat_t *msg) {
+static inline uint16_t lira_msg_heartbeat_pack(uint8_t* buf, const lira_msg_heartbeat_t* msg) {
     memcpy(buf, msg, sizeof(lira_msg_heartbeat_t));
     return sizeof(lira_msg_heartbeat_t);
 }
 
 /**
+ * @brief Auto-generated packing layout for LIRA Message: HEARTBEAT
+ * @note Total wire binary size: 8 bytes
+ */
+static inline uint16_t lira_protocol_msg_heartbeat_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t channel,
+                                                             lira_message_t* msg, uint8_t type, uint8_t autobot,
+                                                             uint8_t base_mode, uint32_t custom_mode,
+                                                             uint8_t system_status) {
+    msg->msgid  = 1;
+    msg->sysid  = system_id;
+    msg->compid = component_id;
+
+    // msg->channel = channel;
+    // msg->len = 8;
+
+#pragma pack(push, 1)
+    struct {
+        uint8_t  type;          /*!< Type of the system (Drone, GCS, etc.) */
+        uint8_t  autobot;       /*!< Autopilot type (PX4, ArduPilot, etc.) */
+        uint8_t  base_mode;     /*!< System mode bitfield */
+        uint32_t custom_mode;   /*!< Navigation mode index */
+        uint8_t  system_status; /*!< System status identifier */
+    } _packet;
+#pragma pack(pop)
+
+    _packet.type          = type;
+    _packet.autobot       = autobot;
+    _packet.base_mode     = base_mode;
+    _packet.custom_mode   = custom_mode;
+    _packet.system_status = system_status;
+
+    memcpy(msg->payload, &_packet, 8);
+
+    return 8;
+}
+
+/**
  * @brief Decode a lira_msg_heartbeat_t struct from a buffer
  */
-static inline void lira_msg_heartbeat_decode(lira_msg_heartbeat_t *msg, const uint8_t *buf) {
+static inline void lira_msg_heartbeat_decode(lira_msg_heartbeat_t* msg, const uint8_t* buf) {
     memcpy(msg, buf, sizeof(lira_msg_heartbeat_t));
 }
 
@@ -62,9 +99,9 @@ struct LiraMessageTraits;
 template <>
 struct LiraMessageTraits<lira_msg_heartbeat_t> {
     static constexpr uint32_t    msgid = LIRA_MSG_ID_HEARTBEAT;
-    static constexpr const char *name  = "HEARTBEAT";
+    static constexpr const char* name  = "HEARTBEAT";
 
-    static void decode(lira_msg_heartbeat_t *dest, const uint8_t *src) { lira_msg_heartbeat_decode(dest, src); }
+    static void decode(lira_msg_heartbeat_t* dest, const uint8_t* src) { lira_msg_heartbeat_decode(dest, src); }
 };
 
 }  // namespace lirasdk

@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "utils/msg.h"
 
 #define LIRA_MSG_ID_{{ msg.name }} {{ msg.id }}
 #define LIRA_MSG_LEN_{{ msg.name }} {{ msg.size }}
@@ -28,6 +29,43 @@ typedef struct __lira_msg_{{ msg.name.lower() }} { {{ '\n' }}
 static inline uint16_t lira_msg_{{ msg.name.lower() }}_pack(uint8_t *buf, const lira_msg_{{ msg.name.lower() }}_t *msg) {
     memcpy(buf, msg, sizeof(lira_msg_{{ msg.name.lower() }}_t));
     return sizeof(lira_msg_{{ msg.name.lower() }}_t);
+}
+
+/**
+ * @brief Auto-generated packing layout for LIRA Message: {{ msg.name }}
+ * @note Total wire binary size: {{ msg.size }} bytes
+ */
+static inline uint16_t lira_protocol_msg_{{ msg.name.lower() }}_pack_chan( 
+    uint8_t system_id, 
+    uint8_t component_id, 
+    uint8_t channel, 
+    lira_message_t* msg,
+    {%- for field in msg.fields %}
+    {{ field.type }} {{ field.name }}{{ "," if not loop.last }} {{ '\n' }}
+    {%- endfor %}
+) {
+    msg->msgid = {{ msg.id }};
+    msg->sysid = system_id;
+    msg->compid = component_id;
+    
+    // msg->channel = channel; 
+    // msg->len = {{ msg.size }};
+
+    #pragma pack(push, 1)
+    struct {
+        {%- for field in msg.fields %}
+        {{ field.type }} {{ field.name }}; /*!< {{ field.desc }} */  {{ '\n' }}
+        {%- endfor %}
+    } _packet;
+    #pragma pack(pop)  {{ '\n' }}  {{ '\n' }}
+
+    {%- for field in msg.fields %}
+    _packet.{{ field.name }} = {{ field.name }}; {{ '\n' }}
+    {%- endfor %}
+
+    memcpy(msg->payload, &_packet, {{ msg.size }});
+
+    return {{ msg.size }};
 }
 
 /**

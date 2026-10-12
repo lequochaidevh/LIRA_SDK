@@ -21,10 +21,51 @@
         <field type="uint8_t" name="satellites_visible">Number of satellites visible</field>
     </message>
 
+    <!-- COMMAND_LONG Layout: For standard 32-bit floating point operations -->
+    <message id="76" name="COMMAND_LONG">
+        <field type="uint8_t"  name="target_system">System ID of the device target robot/drone.</field>
+        <field type="uint8_t"  name="target_component">Component ID of the hardware sub-module.</field>
+        <field type="uint16_t" name="command">The exact command ID identifier (e.g. from LIRA_CMD enum).</field>
+        <field type="uint8_t"  name="confirmation">0: First transmission. 1-255: Incremental retry sequence counters.</field>
+        <field type="float"    name="param1">Command parameter 1 (Depends on the exact Command type definition).</field>
+        <field type="float"    name="param2">Command parameter 2.</field>
+        <field type="float"    name="param3">Command parameter 3.</field>
+        <field type="float"    name="param4">Command parameter 4.</field>
+        <field type="float"    name="param5">Command parameter 5.</field>
+        <field type="float"    name="param6">Command parameter 6.</field>
+        <field type="float"    name="param7">Command parameter 7.</field>
+    </message>
+
+    <!-- COMMAND_INT Layout: For high-precision 32-bit integer GPS mapping -->
+    <message id="75" name="COMMAND_INT">
+        <field type="uint8_t"  name="target_system">System ID of the device target robot/drone.</field>
+        <field type="uint8_t"  name="target_component">Component ID of the hardware sub-module.</field>
+        <field type="uint8_t"  name="frame">The coordinate reference frame system (Maps to LIRA_FRAME enum).</field>
+        <field type="uint16_t" name="command">The exact command ID identifier.</field>
+        <field type="uint8_t"  name="current">0: False, 1: This command is currently active in the navigation buffer.</field>
+        <field type="uint8_t"  name="autocontinue">0: False, 1: Automatically transition to the next command sequence upon completion.</field>
+        <field type="float"    name="param1">Command parameter 1.</field>
+        <field type="float"    name="param2">Command parameter 2.</field>
+        <field type="float"    name="param3">Command parameter 3.</field>
+        <field type="float"    name="param4">Command parameter 4.</field>
+        <field type="int32_t"  name="x">X Coordinate or Latitude value multiplied by 1e7 (Integer Precision).</field>
+        <field type="int32_t"  name="y">Y Coordinate or Longitude value multiplied by 1e7 (Integer Precision).</field>
+        <field type="float"    name="z">Z Coordinate or Altitude value (Depends on the active coordinate frame layout).</field>
+    </message>
+
+    <!-- Command Acknowledgment Packet Definition -->
+    <message id="77" name="COMMAND_ACK">
+        <field type="uint16_t" name="command">The Command ID being acknowledged.</field>
+        <field type="uint8_t" name="result">The raw execution result (Maps directly to LIRA_RESULT enum).</field>
+        <field type="uint8_t" name="progress">Execution progress percentage from 0 to 100 (Only valid for LIRA_RESULT_IN_PROGRESS).</field>
+        <field type="int32_t" name="result_param2">Additional customized system parameter returned by the Drone's micro-controller.</field>
+        <field type="uint8_t" name="target_system">Target system ID of the recipient (The GCS System ID).</field>
+        <field type="uint8_t" name="target_component">Target component ID of the recipient (The GCS Component ID).</field>
+    </message>
 
     <messages>
         <!-- Raw Image Capture Message Definition. -->
-        <message id="263" name="CAMERA_IMAGE_CAPTURED">
+        <message id="263" name="CAM_IMG_CAPTURE">
             <field type="uint32_t" name="time_boot_ms">Timestamp since system boot</field>
             <field type="uint64_t" name="time_utc">UTC Timestamp</field>
             <field type="int32_t" name="lat">Latitude where image was taken</field>

@@ -15,4 +15,19 @@
         <entry value="511" name="LIRA_CMD_SET_MESSAGE_INTERVAL">Set the interval between messages for a particular stream</entry>
     </enum>
 
+    <enum name="LIRA_COMP">
+        <entry value="992" name="LIRA_COMP_ID_AUTOBOT1">Engine by ID</entry>
+        <entry value="993" name="LIRA_COMP_ID_AUTOBOT2">Engine by ID</entry>
+    </enum>
+
+     <enum name="LIRA_RESULT">
+        <entry value="0" name="LIRA_RESULT_ACCEPTED" description="Command executed successfully and acknowledged"/>
+        <entry value="1" name="LIRA_RESULT_TEMPORARILY_REJECTED" description="Command is valid but cannot be executed right now"/>
+        <entry value="2" name="LIRA_RESULT_DENIED" description="Command is invalid or rejected by the system rules"/>
+        <entry value="3" name="LIRA_RESULT_UNSUPPORTED" description="Command is not supported by this robot/drone hardware"/>
+        <entry value="4" name="LIRA_RESULT_FAILED" description="Command is supported and accepted, but execution failed midway"/>
+        <entry value="5" name="LIRA_RESULT_IN_PROGRESS" description="Command is being executed, progress updates will follow"/>
+        <entry value="6" name="LIRA_RESULT_CANCELLED" description="Command execution was explicitly aborted or cancelled"/>
+    </enum>
+
 </lira_protocol>

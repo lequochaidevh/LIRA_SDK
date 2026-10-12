@@ -8,7 +8,11 @@
 #include "message_type/msg_definition.h"
 #include "message_type/heartbeat.h"
 #include "message_type/gps_raw_int.h"
-#include "message_type/camera_image_captured.h"
+#include "message_type/command_ack.h"
+#include "message_type/command_int.h"
+#include "message_type/command_long.h"
+#include "message_type/command_type.h"
+#include "message_type/cam_img_capture.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,8 +28,14 @@ static inline uint16_t lira_get_message_length(uint32_t msgid) {
             return LIRA_MSG_LEN_HEARTBEAT;
         case LIRA_MSG_ID_GPS_RAW_INT:
             return LIRA_MSG_LEN_GPS_RAW_INT;
-        case LIRA_MSG_ID_CAMERA_IMAGE_CAPTURED:
-            return LIRA_MSG_LEN_CAMERA_IMAGE_CAPTURED;
+        case LIRA_MSG_ID_COMMAND_LONG:
+            return LIRA_MSG_LEN_COMMAND_LONG;
+        case LIRA_MSG_ID_COMMAND_INT:
+            return LIRA_MSG_LEN_COMMAND_INT;
+        case LIRA_MSG_ID_COMMAND_ACK:
+            return LIRA_MSG_LEN_COMMAND_ACK;
+        case LIRA_MSG_ID_CAM_IMG_CAPTURE:
+            return LIRA_MSG_LEN_CAM_IMG_CAPTURE;
         default:
             return 0xFFFF;
     }
