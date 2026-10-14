@@ -16,6 +16,9 @@ extern "C" {
 #include <lira_metadata/message_type/heartbeat.h>
 #include <lira_metadata/message_type/gps_raw_int.h>
 #include <lira_metadata/message_type/command_type.h>
+#include <lira_metadata/message_type/command_ack.h>
+#include "lira_metadata/message_type/command_int.h"
+#include "lira_metadata/message_type/command_long.h"
 
 #ifdef __cplusplus
 }
