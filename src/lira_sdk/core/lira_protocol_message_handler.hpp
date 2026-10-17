@@ -26,8 +26,7 @@ class LIRASDK_TEST_EXPORT LiraProtocolMessageHandler {
  public:
     explicit LiraProtocolMessageHandler(asio::io_context& io_context);
 
-    using lira_protocol_message_t = lira_message_t;
-    using Callback                = std::function<void(const lira_protocol_message_t&)>;
+    using Callback = std::function<void(const lira_protocol_message_t&)>;
 
     struct Entry {
         uint32_t               msg_id;

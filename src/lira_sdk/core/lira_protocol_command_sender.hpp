@@ -59,8 +59,8 @@ class LiraProtocolCommandSender {
 
     using TaskDispatcher = std::function<void(std::function<void()>)>;
 
-    explicit LiraProtocolCommandSender(asio::io_context& io_ctx, std::function<bool(const Command&)> send_msg_fn,
-                                       TaskDispatcher user_thread_dispatcher = nullptr);
+    explicit LiraProtocolCommandSender(asio::io_context& io_ctx, TaskDispatcher user_thread_dispatcher = nullptr);
+    // LiraProtocolCommandSender(asio::io_context& io_ctx, std::function<bool(const Command&)> send_msg_fn);
     ~LiraProtocolCommandSender();
 
     static constexpr unsigned DEFAULT_RETRIES = 3;
@@ -92,6 +92,8 @@ class LiraProtocolCommandSender {
     void queue_command_async(const CommandLong& command, const CommandResultCallback& callback,
                              unsigned retries = DEFAULT_RETRIES);
 
+    void register_send_message_callback(std::function<bool(const lira_protocol_message_t& message)> cb);
+
     void do_work();
 
     static const int DEFAULT_COMPONENT_ID_AUTOBOT = LIRA_COMP_ID_AUTOBOT1;
@@ -117,6 +119,8 @@ class LiraProtocolCommandSender {
         bool operator!=(const CommandIdentification& other) const { return !(*this == other); }
     };
 
+    void receive_command_ack(const lira_protocol_message_t& message);
+
     struct Work {
         Command                             command;
         CommandIdentification               identification{};
@@ -138,7 +142,7 @@ class LiraProtocolCommandSender {
             if (command.params.maybe_param1) {
                 const uint32_t param1       = static_cast<uint32_t>(std::lround(command.params.maybe_param1.value()));
                 identification.maybe_param1 = param1;
-                if (param1 == LIRA_PROTOCOL_MSG_ID_CAMERA_IMAGE_CAPTURED) {
+                if (param1 == LIRA_MSG_ID_CAM_IMG_CAPTURE) {
                     if (command.params.maybe_param2) {
                         identification.maybe_param2 =
                             static_cast<uint32_t>(std::lround(command.params.maybe_param2.value()));
@@ -170,9 +174,10 @@ class LiraProtocolCommandSender {
     bool _command_debugging{false};
 
     // Dummy
-    uint8_t        _own_system_id{1};     // GCS
-    uint8_t        _own_component_id{1};  // GCS
-    TaskDispatcher _user_thread_dispatcher{nullptr};
+    uint8_t                                                     _own_system_id{1};     // GCS
+    uint8_t                                                     _own_component_id{1};  // GCS
+    TaskDispatcher                                              _user_thread_dispatcher{nullptr};
+    std::function<bool(const lira_protocol_message_t& message)> _send_raw_msg_fn;
 };
 
 }  // namespace lirasdk

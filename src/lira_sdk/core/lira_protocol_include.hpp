@@ -20,6 +20,8 @@ extern "C" {
 #include "lira_metadata/message_type/command_int.h"
 #include "lira_metadata/message_type/command_long.h"
 
+using lira_protocol_message_t = lira_message_t;
+
 #ifdef __cplusplus
 }
 #endif

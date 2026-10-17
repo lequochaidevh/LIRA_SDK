@@ -53,7 +53,6 @@ class IoRunner {
     std::thread                                                _thread;
 };
 
-using lira_protocol_message_t = lira_message_t;
 lira_protocol_message_t make_msg(uint32_t msgid, uint8_t compid) {
     lira_protocol_message_t msg{};
     msg.msgid  = msgid;

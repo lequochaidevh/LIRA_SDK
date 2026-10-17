@@ -26,8 +26,6 @@
 namespace lirasdk {
 
 class LirasdkImpl {
-    using lira_protocol_message_t = lira_message_t;
-
  public:
     LirasdkImpl();
 

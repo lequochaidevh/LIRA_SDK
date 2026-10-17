@@ -16,7 +16,6 @@ namespace lirasdk {
 // Map the missing envelope type directly onto your pure C structure
 class LiraProtocolReceiver {
  private:
-    using lira_protocol_message_t = lira_message_t;
     class CallbackWrapper {
      public:
         virtual ~CallbackWrapper()                   = default;
