@@ -16,6 +16,7 @@
     </enum>
 
     <enum name="LIRA_COMP">
+        <entry value="0" name="LIRA_COMP_ID_ALL">Broadcast to all components</entry>
         <entry value="992" name="LIRA_COMP_ID_AUTOBOT1">Engine by ID</entry>
         <entry value="993" name="LIRA_COMP_ID_AUTOBOT2">Engine by ID</entry>
     </enum>

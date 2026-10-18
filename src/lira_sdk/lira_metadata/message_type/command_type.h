@@ -27,9 +27,10 @@ typedef enum {
 } LIRA_CMD;
 
 typedef enum {
+    LIRA_COMP_ID_ALL      = 0,   /* Broadcast to all components */
     LIRA_COMP_ID_AUTOBOT1 = 992, /* Engine by ID */
     LIRA_COMP_ID_AUTOBOT2 = 993, /* Engine by ID */
-    LIRA_COMP_ENUM_END    = 2
+    LIRA_COMP_ENUM_END    = 3
 } LIRA_COMP;
 
 typedef enum {
