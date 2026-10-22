@@ -22,6 +22,9 @@ extern "C" {
 
 using lira_protocol_message_t = lira_message_t;
 
+// Todo: add message definition
+// lira_protocol_status_t* lira_protocol_get_channel_status(uint8_t chan);
+
 #ifdef __cplusplus
 }
 #endif
