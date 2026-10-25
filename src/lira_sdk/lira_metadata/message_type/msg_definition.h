@@ -14,6 +14,10 @@ extern "C" {
 
 typedef enum {
     LIRA_MSG_ID_HEARTBEAT       = 1,
+    LIRA_MSG_ID_PARAM_VALUE     = 22,
+    LIRA_MSG_ID_PARAM_SET       = 23,
+    LIRA_MSG_ID_PARAM_EXT_SET   = 320,
+    LIRA_MSG_ID_PARAM_EXT_VALUE = 321,
     LIRA_MSG_ID_GPS_RAW_INT     = 33,
     LIRA_MSG_ID_COMMAND_LONG    = 76,
     LIRA_MSG_ID_COMMAND_INT     = 75,

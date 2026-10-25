@@ -3,6 +3,7 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 from jinja2 import Environment, FileSystemLoader
+import subprocess
 
 # Type mapping dictionary to calculate lengths
 TYPE_SIZES = {
@@ -86,9 +87,18 @@ def run_pipeline_generic(messages, enums, template_name, output_filename, output
     
     template = env.get_template(template_name)
     output_path = os.path.join(output_dir, output_filename)
-    
+
+    dir_name = os.path.basename(output_dir)
+    # This prevents the TypeError if a path string or empty variable is passed.
+    if isinstance(messages, list) and len(messages) > 0 and isinstance(messages[0], dict):
+        generated_includes = [f"{dir_name}/{msg['name'].lower()}.h" for msg in messages]
+    else:
+        generated_includes = []
+
+    # Render template cleanly
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(template.render(messages=messages, enums=enums))
+        f.write(template.render(messages=messages, enums=enums, includes=generated_includes))
+        
     print(f"🟢 [Generic] Generated: {output_filename}")
 
 # FUNC2: Multi header - specifically
@@ -103,6 +113,23 @@ def generate_individual_messages(messages, template_name, output_dir):
             f.write(msg_template.render(msg=msg))
         print(f"  ├── 📄 Exported static schema: {file_name}")
 
+def apply_clang_format(file_path):
+    """
+    Applies the project's .clang-format configuration onto a specific generated file.
+    Safely handles cases where clang-format tool is missing in the system path.
+    """
+    if not os.path.exists(file_path):
+        return False
+        
+    try:
+        # Executes formatting in-place using the closest parent .clang-format file
+        subprocess.run(["clang-format", "-i", file_path], check=True)
+        print(f"  🎨 Styled clean via clang-format: {os.path.basename(file_path)}")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print(f"  ⚠️  Skipped formatting: 'clang-format' tool not found in system PATH for {os.path.basename(file_path)}.")
+        return False
+
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -111,7 +138,8 @@ if __name__ == "__main__":
     
     xml_files = [
         os.path.join(script_dir, "common.xml"),
-        os.path.join(script_dir, "command.xml")
+        os.path.join(script_dir, "command.xml"),
+        os.path.join(script_dir, "parameters.xml")
     ]
     
     all_messages = []
@@ -137,3 +165,17 @@ if __name__ == "__main__":
     print("\n Dynamic C-Header generation process completed successfully.")
     xml_file = os.path.join(script_dir, "command.xml")
     run_pipeline_generic(xml_file, all_enums,"command_type.h.txt", "command_type.h", target_output_dir)
+
+    print("\n Dynamic C-Header generation process completed successfully.")
+    xml_file = os.path.join(script_dir, "parameters.xml")
+    run_pipeline_generic(xml_file, all_enums,"param_config.h.txt", "param_config.h", target_output_dir)
+
+    # Step 2: Cleanly loop through the output directory and format every generated .h file automatically
+    for root_dir, _, files in os.walk(target_output_dir):
+        for file in files:
+            if file.endswith(".h"):
+                full_file_path = os.path.join(root_dir, file)
+                apply_clang_format(full_file_path)
+
+    print("✅ All tasks finalized successfully.")
+

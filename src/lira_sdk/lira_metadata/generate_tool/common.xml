@@ -9,6 +9,42 @@
         <field type="uint8_t" name="system_status">System status identifier</field>
     </message>
 
+    <!-- Standard Parameter Value Transport Layer -->
+    <message id="22" name="PARAM_VALUE">
+        <field type="char" name="param_id[16]">Parameter name string (max 16 chars)</field>
+        <field type="float" name="param_value">Raw 4-byte value sequence</field>
+        <field type="uint8_t" name="param_type">Maps to PARAM_TYPE enum</field>
+        <field type="uint16_t" name="param_count">Total parameters in system</field>
+        <field type="uint16_t" name="param_index">Zero-based index of this parameter</field>
+    </message>
+
+    <!-- Standard Parameter Set Command (Request from GCS to change a param) -->
+    <message id="23" name="PARAM_SET">
+        <field type="float" name="target_system">Target system ID</field>
+        <field type="uint8_t" name="target_component">Target component ID</field>
+        <field type="char" name="param_id[16]">Parameter name string</field>
+        <field type="uint8_t" name="param_value">Proposed raw 4-byte data</field>
+        <field type="uint8_t" name="param_type">Maps to PARAM_TYPE enum</field>
+    </message>
+
+    <!-- Extended Parameter Set Layout (For larger data payloads, e.g., 128 bytes custom structures) -->
+    <message id="320" name="PARAM_EXT_SET">
+        <field type="uint8_t" name="target_system">Target system identifier</field>
+        <field type="uint8_t" name="target_component">Target hardware component</field>
+        <field type="char" name="param_id[16]">Target parameter identifier string</field>
+        <field type="char" name="param_value[128]">Extended raw data buffer array containing up to 128 bytes</field>
+        <field type="uint8_t" name="param_type">Maps to lira_protocol_param_ext_type_t enum</field>
+    </message>
+
+    <!-- Extended Parameter Value Status Broadcast -->
+    <message id="321" name="PARAM_EXT_VALUE">
+        <field type="char" name="param_id[16]">Extended parameter identifier name string (Max 16 chars)</field>
+        <field type="char" name="param_value[128]">Extended raw configuration binary matrix database holding up to 128 bytes</field>
+        <field type="uint8_t" name="param_type">Maps directly to lira_protocol_param_ext_type_t enum</field>
+        <field type="uint16_t" name="param_count">Total configuration blocks count inside the stack</field>
+        <field type="uint16_t" name="param_index">Current element index inside configuration block</field>
+    </message>
+
     <!-- Raw GPS Message Definition -->
     <message id="33" name="GPS_RAW_INT">
         <field type="uint64_t" name="time_usec">Timestamp in microseconds</field>

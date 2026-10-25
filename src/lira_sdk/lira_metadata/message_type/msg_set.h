@@ -6,12 +6,17 @@
 
 #include <stdint.h>
 #include "message_type/msg_definition.h"
+
+/* Dynamic automated include layer mapping to all generated schemas */
 #include "message_type/heartbeat.h"
+#include "message_type/param_value.h"
+#include "message_type/param_set.h"
+#include "message_type/param_ext_set.h"
+#include "message_type/param_ext_value.h"
 #include "message_type/gps_raw_int.h"
-#include "message_type/command_ack.h"
-#include "message_type/command_int.h"
 #include "message_type/command_long.h"
-#include "message_type/command_type.h"
+#include "message_type/command_int.h"
+#include "message_type/command_ack.h"
 #include "message_type/cam_img_capture.h"
 
 #ifdef __cplusplus
@@ -26,6 +31,14 @@ static inline uint16_t lira_get_message_length(uint32_t msgid) {
     switch (msgid) {
         case LIRA_MSG_ID_HEARTBEAT:
             return LIRA_MSG_LEN_HEARTBEAT;
+        case LIRA_MSG_ID_PARAM_VALUE:
+            return LIRA_MSG_LEN_PARAM_VALUE;
+        case LIRA_MSG_ID_PARAM_SET:
+            return LIRA_MSG_LEN_PARAM_SET;
+        case LIRA_MSG_ID_PARAM_EXT_SET:
+            return LIRA_MSG_LEN_PARAM_EXT_SET;
+        case LIRA_MSG_ID_PARAM_EXT_VALUE:
+            return LIRA_MSG_LEN_PARAM_EXT_VALUE;
         case LIRA_MSG_ID_GPS_RAW_INT:
             return LIRA_MSG_LEN_GPS_RAW_INT;
         case LIRA_MSG_ID_COMMAND_LONG:
