@@ -311,7 +311,7 @@ bool ParamValue::set_empty_type_from_xml(const std::string& type_str) {
     return true;
 }
 
-[[nodiscard]] LIRA_PARAM_TYPE ParamValue::get_mav_param_type() const {
+[[nodiscard]] LIRA_PARAM_TYPE ParamValue::get_lira_param_type() const {
     if (std::get_if<uint8_t>(&_value)) {
         return LIRA_PARAM_TYPE_UINT8;
     } else if (std::get_if<int8_t>(&_value)) {
@@ -339,7 +339,7 @@ bool ParamValue::set_empty_type_from_xml(const std::string& type_str) {
     }
 }
 
-[[nodiscard]] LIRA_PARAM_EXT_TYPE ParamValue::get_mav_param_ext_type() const {
+[[nodiscard]] LIRA_PARAM_EXT_TYPE ParamValue::get_lira_param_ext_type() const {
     if (std::get_if<uint8_t>(&_value)) {
         return LIRA_PARAM_EXT_TYPE_UINT8;
     } else if (std::get_if<int8_t>(&_value)) {

@@ -29,8 +29,8 @@ class LIRASDK_TEST_EXPORT ParamValue {
     bool set_from_lira_protocol_param_value(const lira_msg_param_value_t& lira_protocol_value,
                                             const Conversion&             conversion);
 
-    [[nodiscard]] LIRA_PARAM_TYPE     get_mav_param_type() const;
-    [[nodiscard]] LIRA_PARAM_EXT_TYPE get_mav_param_ext_type() const;
+    [[nodiscard]] LIRA_PARAM_TYPE     get_lira_param_type() const;
+    [[nodiscard]] LIRA_PARAM_EXT_TYPE get_lira_param_ext_type() const;
 
     bool set_as_same_type(const std::string& value_str);
 

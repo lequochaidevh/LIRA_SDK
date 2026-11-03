@@ -1,0 +1,100 @@
+#include "lira_protocol_parameter_subscription.hpp"
+
+#include <algorithm>
+#include <cassert>
+#include <future>
+
+namespace lirasdk {
+
+void LiraProtocolParameterSubscription::subscribe_param_float_changed(const std::string&               name,
+                                                                      const ParamFloatChangedCallback& callback,
+                                                                      const void*                      cookie) {
+    subscribe_param_changed<float>(name, callback, cookie);
+}
+
+void LiraProtocolParameterSubscription::subscribe_param_int_changed(const std::string&             name,
+                                                                    const ParamIntChangedCallback& callback,
+                                                                    const void*                    cookie) {
+    subscribe_param_changed<int>(name, callback, cookie);
+}
+
+void LiraProtocolParameterSubscription::subscribe_param_custom_changed(const std::string&                name,
+                                                                       const ParamCustomChangedCallback& callback,
+                                                                       const void*                       cookie) {
+    subscribe_param_changed<std::string>(name, callback, cookie);
+}
+
+void LiraProtocolParameterSubscription::find_and_call_subscriptions_value_changed(const std::string& param_name,
+                                                                                  const ParamValue&  value) {
+    // Runs on the io_context thread; _param_changed_subscriptions is only touched there,
+    // so no locking is needed.
+    note_list_thread();
+    _iterating = true;
+
+    for (const auto& subscription : _param_changed_subscriptions) {
+        if (subscription.param_name != param_name) {
+            continue;
+        }
+        LogDebug("Param {} changed to {}", param_name, value.get_string());
+        // We have a subscription on this param name, now check if the subscription is for the right
+        // type and call the callback when matching
+        if (std::get_if<ParamFloatChangedCallback>(&subscription.callback) && value.get_float()) {
+            std::get<ParamFloatChangedCallback>(subscription.callback)(value.get_float().value());
+        } else if (std::get_if<ParamIntChangedCallback>(&subscription.callback) && value.get_int()) {
+            std::get<ParamIntChangedCallback>(subscription.callback)(value.get_int().value());
+        } else if (std::get_if<ParamCustomChangedCallback>(&subscription.callback) && value.get_custom()) {
+            std::get<ParamCustomChangedCallback>(subscription.callback)(value.get_custom().value());
+        } else {
+            // The callback we have set is not for this type.
+            LogErr("Type and callback mismatch");
+        }
+    }
+
+    _iterating = false;
+}
+
+void LiraProtocolParameterSubscription::unsubscribe_all_params_changed(const void* cookie) {
+    // Must be called on the io_context thread (or while it is stopped); the list is only
+    // touched there.
+    note_list_thread();
+    // Removing directly from within a subscription callback would invalidate the iteration
+    // in find_and_call_subscriptions_value_changed(); use the posted
+    // subscribe_param_changed(nullptr, ...) path there instead.
+    assert(!_iterating);
+    _param_changed_subscriptions.erase(
+        std::remove_if(_param_changed_subscriptions.begin(), _param_changed_subscriptions.end(),
+                       [&](const auto& subscription) { return subscription.cookie == cookie; }),
+        _param_changed_subscriptions.end());
+}
+
+void LiraProtocolParameterSubscription::unsubscribe_all_params_changed_blocking(const void* cookie) {
+    // Synchronous removal: once this returns, no callback for this cookie can fire
+    // anymore. Same shape as LiraProtocolMessageHandler::unregister_all_blocking().
+    if (_io_context.stopped()) {
+        // The io_context thread is dead — safe to access directly.
+        unsubscribe_all_params_changed(cookie);
+        return;
+    }
+
+    if (on_io_thread()) {
+        // Already on the io thread: remove directly, we cannot post and then wait on
+        // ourselves. Not supported from within a subscription callback (see the assert in
+        // unsubscribe_all_params_changed).
+        unsubscribe_all_params_changed(cookie);
+        return;
+    }
+
+    // Waiting here relies on the io_context staying alive and running: it is only stopped
+    // in ~LirasdkImpl, after which the stopped() branch above applies. The stopped() check
+    // is not synchronized with that teardown, so destroying an owner concurrently with the
+    // Lirasdk instance itself is not supported -- the posted removal could then never run
+    // and this wait would hang.
+    std::promise<void> done;
+    asio::post(_io_context, [this, cookie, &done]() {
+        unsubscribe_all_params_changed(cookie);
+        done.set_value();
+    });
+    done.get_future().wait();
+}
+
+}  // namespace lirasdk
