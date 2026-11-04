@@ -1,0 +1,194 @@
+#include "lira_protocol_parameter_cache.hpp"
+
+#include <algorithm>
+
+namespace lirasdk {
+
+LiraProtocolParameterCache::AddNewParamResult LiraProtocolParameterCache::add_new_param(const std::string& param_id,
+                                                                                        ParamValue         value,
+                                                                                        int16_t            index) {
+    if (exists(param_id)) {
+        return AddNewParamResult::AlreadyExists;
+    }
+
+    if (static_cast<size_t>(_all_params.size() + 1) > static_cast<size_t>(std::numeric_limits<int16_t>::max())) {
+        return AddNewParamResult::TooManyParams;
+    }
+
+    _all_params.push_back(
+        Param{param_id, std::move(value),
+              (index != -1 ? static_cast<uint16_t>(index) : static_cast<uint16_t>(_all_params.size()))});
+    return LiraProtocolParameterCache::AddNewParamResult::Ok;
+}
+
+LiraProtocolParameterCache::UpdateExistingParamResult LiraProtocolParameterCache::update_existing_param(
+    const std::string& param_id, ParamValue value) {
+    auto it =
+        std::find_if(_all_params.begin(), _all_params.end(), [&](const auto& param) { return (param_id == param.id); });
+
+    if (it == _all_params.end()) {
+        return UpdateExistingParamResult::MissingParam;
+    }
+
+    if (!it->value.is_same_type(value)) {
+        return LiraProtocolParameterCache::UpdateExistingParamResult::WrongType;
+    } else {
+        it->value.update_value_typesafe(value);
+        return LiraProtocolParameterCache::UpdateExistingParamResult::Ok;
+    }
+}
+
+std::vector<LiraProtocolParameterCache::Param> LiraProtocolParameterCache::all_parameters(
+    bool including_extended) const {
+    if (including_extended) {
+        return _all_params;
+    } else {
+        // TODO: we might want to cache this
+        std::vector<LiraProtocolParameterCache::Param> params_without_extended{};
+        std::copy_if(_all_params.begin(), _all_params.end(), std::back_inserter(params_without_extended),
+                     [](auto& entry) { return !entry.value.needs_extended(); });
+
+        // The non-extended protocol only advertises these parameters, so their indices
+        // must be contiguous 0..N-1 to stay consistent with count(false). Otherwise, when
+        // extended-only params are interspersed, the stored (full-set) index no longer
+        // matches the position in this filtered view: param_by_index() would return the
+        // wrong param (or trip its assert) and broadcasts would send an index >= count.
+        for (uint16_t i = 0; i < params_without_extended.size(); ++i) {
+            params_without_extended[i].index = i;
+        }
+
+        return params_without_extended;
+    }
+}
+
+std::map<std::string, ParamValue> LiraProtocolParameterCache::all_parameters_map(bool including_extended) const {
+    std::map<std::string, ParamValue> mp{};
+    if (including_extended) {
+        for (const auto& param : _all_params) {
+            mp.insert({param.id, param.value});
+        }
+
+    } else {
+        for (const auto& param : _all_params) {
+            if (param.value.needs_extended()) {
+                continue;
+            }
+            mp.insert({param.id, param.value});
+        }
+    }
+
+    return mp;
+}
+
+std::optional<LiraProtocolParameterCache::Param> LiraProtocolParameterCache::param_by_id(
+    const std::string& param_id, bool including_extended) const {
+    const auto& params = all_parameters(including_extended);
+
+    for (const auto& param : params) {
+        if (param.id == param_id) {
+            return param;
+        }
+    }
+
+    return {};
+}
+
+std::optional<LiraProtocolParameterCache::Param> LiraProtocolParameterCache::param_by_index(
+    uint16_t param_index, bool including_extended) const {
+    const auto& params = all_parameters(including_extended);
+    if (param_index >= params.size()) {
+        LogErr("Param at {} out of bounds ({})", (int)param_index, params.size());
+        return {};
+    }
+
+    const auto& param = params[param_index];
+    // Check that the redundant index matches the actual vector index.
+    assert(param.index == param_index);
+    return {param};
+}
+
+uint16_t LiraProtocolParameterCache::count(bool including_extended) const {
+    const auto num = all_parameters(including_extended).size();
+    assert(num < std::numeric_limits<uint16_t>::max());
+    return static_cast<uint16_t>(num);
+}
+
+void LiraProtocolParameterCache::clear() {
+    _all_params.clear();
+    _last_missing_requested = {};
+}
+
+bool LiraProtocolParameterCache::exists(const std::string& param_id) const {
+    auto it =
+        std::find_if(_all_params.begin(), _all_params.end(), [&](const auto& param) { return (param_id == param.id); });
+    return it != _all_params.end();
+}
+
+bool LiraProtocolParameterCache::exists(uint16_t param_index) const {
+    auto it = std::find_if(_all_params.begin(), _all_params.end(),
+                           [&](const auto& param) { return (param_index == param.index); });
+    return it != _all_params.end();
+}
+
+uint16_t LiraProtocolParameterCache::missing_count(uint16_t count) const {
+    uint16_t missing = 0;
+
+    for (uint16_t i = 0; i < count; ++i) {
+        if (!exists(i)) {
+            ++missing;
+        }
+    }
+
+    return missing;
+}
+
+std::vector<uint16_t> LiraProtocolParameterCache::next_missing_indices(uint16_t count, uint16_t chunk_size) {
+    // Extended doesn't matter here because we use this function in the sender
+    // which is always either all extended or not.
+    std::sort(_all_params.begin(), _all_params.end(),
+              [](const auto& lhs, const auto& rhs) { return lhs.index < rhs.index; });
+
+    std::vector<uint16_t> result;
+
+    for (unsigned i = 0; i < count; ++i) {
+        if (exists(i)) {
+            continue;
+        }
+
+        result.push_back(i);
+        _last_missing_requested = {i};
+
+        if (result.size() == chunk_size) {
+            break;
+        }
+    }
+
+    return result;
+}
+
+void LiraProtocolParameterCache::print_missing(uint16_t count) {
+    // Extended doesn't matter here because we use this function in the sender
+    // which is always either all extended or not.
+    std::sort(_all_params.begin(), _all_params.end(),
+              [](const auto& lhs, const auto& rhs) { return lhs.index < rhs.index; });
+
+    LogDebug("Available: ");
+    for (auto param : _all_params) {
+        LogDebug("{}: {}", param.index, param.id);
+    }
+    LogDebug("Available count: {}", _all_params.size());
+
+    unsigned missing = 0;
+    LogDebug("Missing: ");
+    for (unsigned i = 0; i < count; ++i) {
+        if (!exists(i)) {
+            // We have reached the end but it's not complete yet.
+            LogDebug("{}", i);
+            ++missing;
+        }
+    }
+
+    LogDebug("Missing count: {}", missing);
+}
+
+}  // namespace lirasdk
