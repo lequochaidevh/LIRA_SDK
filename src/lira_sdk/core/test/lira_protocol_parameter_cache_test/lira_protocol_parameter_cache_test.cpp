@@ -1,0 +1,174 @@
+#include <gtest/gtest.h>
+#include "param_value.hpp"
+#include "lira_protocol_parameter_cache.hpp"
+
+using namespace lirasdk;
+
+TEST(ParamValue, CustomComparator) {
+    ParamValue param_value1;
+    param_value1.set(static_cast<int>(10));
+    ParamValue param_value2;
+    param_value2.set(static_cast<int>(10));
+    // comparing 2 values of same type and same value
+    EXPECT_EQ(param_value1, param_value2);
+    // samy type but different values
+    param_value2.set(static_cast<int>(11));
+    EXPECT_NE(param_value1, param_value2);
+    // different type, same value but int and float.
+    param_value2.set(static_cast<float>(10));
+    EXPECT_EQ(false, param_value1.is_same_type(param_value2));
+    EXPECT_NE(param_value1, param_value2);
+    // string comparisons
+    param_value1.set(std::string("Hello"));
+    param_value2.set(std::string("Hello"));
+    EXPECT_EQ(param_value1, param_value2);
+    param_value1.set(static_cast<int>(10));
+    param_value2.set(std::string("10"));
+    EXPECT_NE(param_value1, param_value2);
+}
+
+struct TestParam {
+    const std::string id;
+    ParamValue        value;
+};
+
+TEST(LiraProtocolParameterCache, AddingAndUpdating) {
+    TestParam int_value1{"INT_VALUE", {}};
+    int_value1.value.set(static_cast<int32_t>(10));
+    TestParam custom_value1{"CUST_VALUE", {}};
+    custom_value1.value.set(std::string("10"));
+
+    LiraProtocolParameterCache cache;
+    EXPECT_EQ(LiraProtocolParameterCache::AddNewParamResult::Ok, cache.add_new_param(int_value1.id, int_value1.value));
+    // cannot add same id twice
+    EXPECT_EQ(LiraProtocolParameterCache::AddNewParamResult::AlreadyExists,
+              cache.add_new_param(int_value1.id, int_value1.value));
+    EXPECT_EQ(LiraProtocolParameterCache::UpdateExistingParamResult::Ok,
+              cache.update_existing_param(int_value1.id, int_value1.value));
+    // haven't added it yet
+    EXPECT_EQ(LiraProtocolParameterCache::UpdateExistingParamResult::MissingParam,
+              cache.update_existing_param(custom_value1.id, custom_value1.value));
+    EXPECT_EQ(LiraProtocolParameterCache::AddNewParamResult::Ok,
+              cache.add_new_param(custom_value1.id, custom_value1.value));
+    // now it should be available
+    EXPECT_EQ(LiraProtocolParameterCache::UpdateExistingParamResult::Ok,
+              cache.update_existing_param(custom_value1.id, custom_value1.value));
+    // update existing but wrong type
+    EXPECT_EQ(LiraProtocolParameterCache::UpdateExistingParamResult::WrongType,
+              cache.update_existing_param(custom_value1.id, int_value1.value));
+}
+
+TEST(LiraProtocolParameterCache, MissingIndicesSorted) {
+    LiraProtocolParameterCache cache;
+    ParamValue                 value;
+    // We use all the same value, we don't care about that part.
+    value.set_int(42);
+
+    cache.add_new_param("PARAM0", value);
+    cache.add_new_param("PARAM1", value);
+
+    // No result when the count matches the contents.
+    EXPECT_EQ(cache.next_missing_indices(2, 10).size(), 0);
+
+    // The next entry when the count is bigger.
+    ASSERT_EQ(cache.next_missing_indices(3, 10).size(), 1);
+    EXPECT_EQ(cache.next_missing_indices(3, 10)[0], 2);
+    EXPECT_EQ(cache.next_missing_indices(10, 10)[0], 2);
+
+    cache.add_new_param("PARAM2", value, 5);
+    std::vector<uint16_t> result = {2, 3, 4};
+    EXPECT_EQ(cache.next_missing_indices(6, 10), result);
+}
+
+TEST(LiraProtocolParameterCache, MissingInChunks) {
+    LiraProtocolParameterCache cache;
+    ParamValue                 value;
+    // We use all the same value, we don't care about that part.
+    value.set_int(42);
+
+    cache.add_new_param("PARAM0", value);
+    cache.add_new_param("PARAM1", value);
+    cache.add_new_param("PARAM2", value);
+    cache.add_new_param("PARAM3", value);
+
+    // All remaining one are returned.
+    EXPECT_EQ(cache.next_missing_indices(10, 10).size(), 6);
+
+    // Only up to chunk size are returned
+    EXPECT_EQ(cache.next_missing_indices(10, 3).size(), 3);
+}
+
+TEST(LiraProtocolParameterCache, MissingIndicesNotSorted) {
+    LiraProtocolParameterCache cache;
+    ParamValue                 value;
+    // We use all the same value, we don't care about that part.
+    value.set_int(42);
+
+    cache.add_new_param("PARAM0", value, 1);
+    cache.add_new_param("PARAM1", value, 3);
+
+    // It should still work when not sorted.
+    std::vector<uint16_t> result = {0, 2};
+    EXPECT_EQ(cache.next_missing_indices(3, 10), result);
+}
+
+TEST(ParamValue, FloatDoubleAndBoolBasics) {
+    ParamValue f1;
+    f1.set(static_cast<float>(1.5f));
+    ParamValue f2;
+    f2.set(static_cast<float>(1.5f));
+    EXPECT_EQ(f1, f2);
+    f2.set(static_cast<float>(2.5f));
+    EXPECT_NE(f1, f2);
+
+    ParamValue d1;
+    d1.set(static_cast<double>(3.25));
+    ParamValue d2;
+    d2.set(static_cast<double>(3.25));
+    EXPECT_EQ(d1, d2);
+
+    // Different numeric kinds should not compare equal even if values match textually.
+    ParamValue as_int;
+    as_int.set(static_cast<int32_t>(1));
+    ParamValue as_float;
+    as_float.set(static_cast<float>(1.0f));
+    EXPECT_FALSE(as_int.is_same_type(as_float));
+    EXPECT_NE(as_int, as_float);
+}
+
+TEST(ParamValue, TypestrAndNeedsExtended) {
+    ParamValue i32;
+    i32.set(static_cast<int32_t>(7));
+    EXPECT_EQ(i32.typestr(), "int32_t");
+    EXPECT_FALSE(i32.needs_extended());
+
+    ParamValue f;
+    f.set(1.5f);
+    EXPECT_EQ(f.typestr(), "float");
+    EXPECT_FALSE(f.needs_extended());
+
+    ParamValue d;
+    d.set(2.5);
+    EXPECT_EQ(d.typestr(), "double");
+    EXPECT_TRUE(d.needs_extended());
+
+    ParamValue s;
+    s.set(std::string("hi"));
+    EXPECT_EQ(s.typestr(), "custom");
+    EXPECT_TRUE(s.needs_extended());
+
+    ParamValue u64;
+    u64.set(static_cast<uint64_t>(9));
+    EXPECT_EQ(u64.typestr(), "uint64_t");
+    EXPECT_TRUE(u64.needs_extended());
+}
+
+TEST(ParamValue, GetStringForCommonTypes) {
+    ParamValue i;
+    i.set(static_cast<int32_t>(-3));
+    EXPECT_EQ(i.get_string(), "-3");
+
+    ParamValue s;
+    s.set(std::string("abc"));
+    EXPECT_EQ(s.get_string(), "abc");
+}
