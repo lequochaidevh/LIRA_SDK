@@ -170,6 +170,15 @@ if __name__ == "__main__":
     xml_file = os.path.join(script_dir, "parameters.xml")
     run_pipeline_generic(xml_file, all_enums,"param_config.h.txt", "param_config.h", target_output_dir)
 
+    print("\n Dynamic C-Header generation process completed successfully.")
+    all_messages = []
+    all_enums = []
+    msgs, enums = parse_xml_schema(os.path.join(script_dir, "enum_common.xml"))
+    all_messages.extend(msgs)
+    all_enums.extend(enums)
+    xml_file = os.path.join(script_dir, "enum_common.xml")
+    run_pipeline_generic(xml_file, all_enums,"enum_common.h.txt", "enum_common.h", target_output_dir)
+    
     # Step 2: Cleanly loop through the output directory and format every generated .h file automatically
     for root_dir, _, files in os.walk(target_output_dir):
         for file in files:

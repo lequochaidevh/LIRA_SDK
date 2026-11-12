@@ -8,7 +8,7 @@
 #include <string.h>
 #include "utils/msg.h"
 
-#define LIRA_MSG_ID_LIRA_PARAM_VALUE 22
+#define LIRA_MSG_ID_LIRA_PARAM_VALUE  22
 #define LIRA_MSG_LEN_LIRA_PARAM_VALUE 6
 
 #ifdef __cplusplus
@@ -16,19 +16,19 @@ extern "C" {
 #endif
 
 #pragma pack(push, 1)
-typedef struct __lira_msg_lira_param_value { 
-    char 	 param_id; /* Parameter name (e.g., "SYS_ID") */ 
-    uint8_t 	 param_value[4]; /* Raw byte storage capacity holding the actual value data */ 
-    uint8_t 	 param_type; /* The original exact data type (Maps to LIRA_PARAM_TYPE) */ 
-    uint16_t 	 param_count; /* Total parameters count in system */ 
-    uint16_t 	 param_index; /* Index of this current parameter */ 
+typedef struct __lira_msg_lira_param_value {
+    char     param_id;       /* Parameter name (e.g., "SYS_ID") */
+    uint8_t  param_value[4]; /* Raw byte storage capacity holding the actual value data */
+    uint8_t  param_type;     /* The original exact data type (Maps to LIRA_PARAM_TYPE) */
+    uint16_t param_count;    /* Total parameters count in system */
+    uint16_t param_index;    /* Index of this current parameter */
 } lira_msg_lira_param_value_t;
 #pragma pack(pop)
 
 /**
  * @brief Pack a lira_msg_lira_param_value_t struct into a buffer
  */
-static inline uint16_t lira_msg_lira_param_value_pack(uint8_t *buf, const lira_msg_lira_param_value_t *msg) {
+static inline uint16_t lira_msg_lira_param_value_pack(uint8_t* buf, const lira_msg_lira_param_value_t* msg) {
     memcpy(buf, msg, sizeof(lira_msg_lira_param_value_t));
     return sizeof(lira_msg_lira_param_value_t);
 }
@@ -37,37 +37,32 @@ static inline uint16_t lira_msg_lira_param_value_pack(uint8_t *buf, const lira_m
  * @brief Auto-generated packing layout for LIRA Message: LIRA_PARAM_VALUE
  * @note Total wire binary size: 6 bytes
  */
-static inline uint16_t lira_protocol_msg_lira_param_value_pack_chan( 
-    uint8_t system_id, 
-    uint8_t component_id, 
-    uint8_t channel, 
-    lira_message_t* msg,    char param_id, 
-    uint8_t param_value[4], 
-    uint8_t param_type, 
-    uint16_t param_count, 
-    uint16_t param_index 
-) {
-    msg->msgid = 22;
-    msg->sysid = system_id;
+static inline uint16_t lira_protocol_msg_lira_param_value_pack_chan(uint8_t system_id, uint8_t component_id,
+                                                                    uint8_t channel, lira_message_t* msg, char param_id,
+                                                                    uint8_t param_value[4], uint8_t param_type,
+                                                                    uint16_t param_count, uint16_t param_index) {
+    msg->msgid  = 22;
+    msg->sysid  = system_id;
     msg->compid = component_id;
-    
-    // msg->channel = channel; 
+
+    // msg->channel = channel;
     // msg->len = 6;
 
-    #pragma pack(push, 1)
-    struct {        char param_id; /*!< Parameter name (e.g., "SYS_ID") */  
-        uint8_t param_value[4]; /*!< Raw byte storage capacity holding the actual value data */  
-        uint8_t param_type; /*!< The original exact data type (Maps to LIRA_PARAM_TYPE) */  
-        uint16_t param_count; /*!< Total parameters count in system */  
-        uint16_t param_index; /*!< Index of this current parameter */  
+#pragma pack(push, 1)
+    struct {
+        char     param_id;       /*!< Parameter name (e.g., "SYS_ID") */
+        uint8_t  param_value[4]; /*!< Raw byte storage capacity holding the actual value data */
+        uint8_t  param_type;     /*!< The original exact data type (Maps to LIRA_PARAM_TYPE) */
+        uint16_t param_count;    /*!< Total parameters count in system */
+        uint16_t param_index;    /*!< Index of this current parameter */
     } _packet;
-    #pragma pack(pop)  
-  
-    _packet.param_id = param_id; 
-    _packet.param_value[4] = param_value[4]; 
-    _packet.param_type = param_type; 
-    _packet.param_count = param_count; 
-    _packet.param_index = param_index; 
+#pragma pack(pop)
+
+    _packet.param_id       = param_id;
+    _packet.param_value[4] = param_value[4];
+    _packet.param_type     = param_type;
+    _packet.param_count    = param_count;
+    _packet.param_index    = param_index;
 
     memcpy(msg->payload, &_packet, 6);
 
@@ -77,7 +72,7 @@ static inline uint16_t lira_protocol_msg_lira_param_value_pack_chan(
 /**
  * @brief Decode a lira_msg_lira_param_value_t struct from a buffer
  */
-static inline void lira_msg_lira_param_value_decode(lira_msg_lira_param_value_t *msg, const uint8_t *buf) {
+static inline void lira_msg_lira_param_value_decode(lira_msg_lira_param_value_t* msg, const uint8_t* buf) {
     memcpy(msg, buf, sizeof(lira_msg_lira_param_value_t));
 }
 
@@ -88,10 +83,10 @@ static inline void lira_msg_lira_param_value_decode(lira_msg_lira_param_value_t 
 /* AUTOMATED C++ COMPILE-TIME TRAITS INJECTION LAYER (SHIELDED) */
 #ifdef __cplusplus
 
-// Defensive shielding: If a parent include leaked an open extern "C" block, 
+// Defensive shielding: If a parent include leaked an open extern "C" block,
 // we temporarily break out of it to compile our C++ templates cleanly.
 #ifdef __cplusplus
-} // Force close any potential lingering external C-linkage blocks safely
+}  // Force close any potential lingering external C-linkage blocks safely
 #endif
 
 namespace lirasdk {
@@ -103,18 +98,18 @@ struct LiraMessageTraits;
 // Explicit specialization mapping this concrete struct type to its protocol properties
 template <>
 struct LiraMessageTraits<lira_msg_lira_param_value_t> {
-    static constexpr uint32_t msgid = LIRA_MSG_ID_LIRA_PARAM_VALUE;
-    static constexpr const char* name = "LIRA_PARAM_VALUE";
-    
+    static constexpr uint32_t    msgid = LIRA_MSG_ID_LIRA_PARAM_VALUE;
+    static constexpr const char* name  = "LIRA_PARAM_VALUE";
+
     static void decode(lira_msg_lira_param_value_t* dest, const uint8_t* src) {
         lira_msg_lira_param_value_decode(dest, src);
     }
 };
 
-} // namespace lirasdk
+}  // namespace lirasdk
 
 // Re-open C linkage if this file was nested inside a parent block to prevent breaks below
-extern "C" { 
+extern "C" {
 #endif
 
 #endif /* LIRA_MSG_LIRA_PARAM_VALUE_H */

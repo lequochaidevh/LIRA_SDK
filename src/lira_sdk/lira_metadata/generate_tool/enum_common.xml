@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lira_metadata>
+    <enums>
+        <enum name="PARAM_ACK">
+            <description>Result from PARAM_EXT_SET message.</description>
+            <entry value="0" name="PARAM_ACK_ACCEPTED">
+            <description>Parameter value ACCEPTED and SET</description>
+            </entry>
+            <entry value="1" name="PARAM_ACK_VALUE_UNSUPPORTED">
+            <description>Parameter value UNKNOWN/UNSUPPORTED</description>
+            </entry>
+            <entry value="2" name="PARAM_ACK_FAILED">
+            <description>Parameter failed to set</description>
+            </entry>
+            <entry value="3" name="PARAM_ACK_IN_PROGRESS">
+            <description>Parameter value received but not yet set/accepted...</description>
+            </entry>
+        </enum>
+    </enums>
+</lira_metadata>

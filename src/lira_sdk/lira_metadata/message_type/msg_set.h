@@ -13,6 +13,7 @@
 #include "message_type/param_set.h"
 #include "message_type/param_ext_set.h"
 #include "message_type/param_ext_value.h"
+#include "message_type/param_ext_ack.h"
 #include "message_type/gps_raw_int.h"
 #include "message_type/command_long.h"
 #include "message_type/command_int.h"
@@ -39,6 +40,8 @@ static inline uint16_t lira_get_message_length(uint32_t msgid) {
             return LIRA_MSG_LEN_PARAM_EXT_SET;
         case LIRA_MSG_ID_PARAM_EXT_VALUE:
             return LIRA_MSG_LEN_PARAM_EXT_VALUE;
+        case LIRA_MSG_ID_PARAM_EXT_ACK:
+            return LIRA_MSG_LEN_PARAM_EXT_ACK;
         case LIRA_MSG_ID_GPS_RAW_INT:
             return LIRA_MSG_LEN_GPS_RAW_INT;
         case LIRA_MSG_ID_COMMAND_LONG:
